@@ -50,5 +50,5 @@ zopen_install()
 
 zopen_append_to_env()
 {
-  export SSL_CERT_FILE="\$PWD/cacert.pem"
+  echo "export SSL_CERT_FILE=\"\$PWD/cacert.pem\""
 }
