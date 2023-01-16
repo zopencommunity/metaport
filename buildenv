@@ -1,0 +1,54 @@
+export ZOPEN_GIT_URL="https://github.com/ZOSOpenTools/meta.git"
+export ZOPEN_TYPE="GIT"
+export ZOPEN_GIT_DEPS="git"
+
+export ZOPEN_CONFIGURE="skip"
+export ZOPEN_MAKE="skip"
+export ZOPEN_CHECK="zopen_check"
+export ZOPEN_INSTALL="zopen_install"
+
+zopen_init()
+{
+  export PATH="$PWD/bin:$PATH"
+}
+
+zopen_check()
+{
+  unset ZOPEN_CHECK
+  unset ZOPEN_MAKE
+  unset ZOPEN_CONFIGURE
+  OLD_INSTALL_DIR=$ZOPEN_INSTALL_DIR
+  ZOPEN_INSTALL_DIR=$PWD/zotsampleport/install
+  type zopen
+  git clone https://github.com/ZOSOpenTools/zotsampleport.git
+  cd zotsampleport
+  zopen build -v
+  ZOPEN_INSTALL_DIR=$OLD_INSTALL_DIR
+}
+
+zopen_check_results()
+{
+  dir="$1"
+  pfx="$2"
+  chk="$1/$2_check.log"
+
+  grep -q "Test results: 1 tests pass out of 1 tests" $chk
+  failures=$?
+  echo "actualFailures:$failures"
+  echo "totalTests:1"
+  echo "expectedFailures:0"
+}
+
+zopen_install()
+{
+  set -e
+  mkdir -p $ZOPEN_INSTALL_DIR
+  rm -rf $PWD/zotsampleport
+  cp -r $PWD/ $ZOPEN_INSTALL_DIR/
+  set +e
+}
+
+zopen_append_to_env()
+{
+  export SSL_CERT_FILE="\$PWD/cacert.pem"
+}
