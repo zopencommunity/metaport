@@ -15,6 +15,7 @@ zopen_init()
 zopen_check()
 {
   # Test zopen with zotsampleport:
+  . ./.env
 
   # Avoid inheriting this buildenv's environment variables
   unset ZOPEN_CHECK
@@ -26,6 +27,7 @@ zopen_check()
   ZOPEN_INSTALL_DIR=$PWD/zotsampleport/install
 
   type zopen
+  type xlclang
   git clone https://github.com/ZOSOpenTools/zotsampleport.git
   cd zotsampleport
 
@@ -57,19 +59,10 @@ zopen_install()
   set +e
 }
 
-zopen_append_to_env()
-{
-  echo "export SSL_CERT_FILE=\"\$PWD/../cacert.pem\""
-}
-
-
 zopen_append_to_setup() {
 cat <<EOF
 if [ -d "\$PWD/meta" ]; then
-  rm -rf "\$PWD/meta/.git"* "\$PWD/meta/.editorconfig" "\$PWD/meta/.env" && cp -r "\$PWD/meta/." "\$PWD/" && rm -rf "\$PWD/meta"
-fi
-if ! [ -f "\$PWD/../cacert.pem" ]; then
-  cp "\$PWD/cacert.pem" "\$PWD/../cacert.pem"
+  rm -rf "\$PWD/meta/.git"* "\$PWD/meta/.editorconfig" && cp -r "\$PWD/meta/." "\$PWD/" && rm -rf "\$PWD/meta"
 fi
 EOF
 }
