@@ -55,7 +55,7 @@ zopen_install()
   set -e
   mkdir -p "$ZOPEN_INSTALL_DIR"
   rm -rf "$PWD/zotsampleport"
-  cp -r "$PWD/" "$ZOPEN_INSTALL_DIR/"
+  cp -r "$PWD/meta/" "$ZOPEN_INSTALL_DIR/"
   set +e
 }
 
