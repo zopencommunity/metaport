@@ -1,6 +1,6 @@
 export ZOPEN_GIT_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_TYPE="GIT"
-export ZOPEN_GIT_DEPS="git"
+export ZOPEN_GIT_DEPS="git gzip make tar zoslib"
 
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
@@ -26,8 +26,6 @@ zopen_check()
   OLD_INSTALL_DIR=$ZOPEN_INSTALL_DIR
   ZOPEN_INSTALL_DIR=$PWD/zotsampleport/install
 
-  type zopen
-  type xlclang
   git clone https://github.com/ZOSOpenTools/zotsampleport.git
   cd zotsampleport
 
@@ -55,14 +53,11 @@ zopen_install()
   set -e
   mkdir -p "$ZOPEN_INSTALL_DIR"
   rm -rf "$PWD/zotsampleport"
-  cp -r "$PWD/meta/" "$ZOPEN_INSTALL_DIR/"
+  rm -rf "$PWD/.git"* "$PWD/.editorconfig"
+  cp -r "$PWD/" "$ZOPEN_INSTALL_DIR/"
   set +e
 }
 
 zopen_append_to_setup() {
-cat <<EOF
-if [ -d "\$PWD/meta" ]; then
-  rm -rf "\$PWD/meta/.git"* "\$PWD/meta/.editorconfig" && cp -r "\$PWD/meta/." "\$PWD/" && rm -rf "\$PWD/meta"
-fi
-EOF
 }
+
