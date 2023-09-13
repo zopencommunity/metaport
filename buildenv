@@ -55,7 +55,7 @@ zopen_install()
   mkdir -p "$ZOPEN_INSTALL_DIR"
   rm -rvf "$PWD/zotsampleport"
   rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
-  cp -rv "$PWD/" "$ZOPEN_INSTALL_DIR/"
+  cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
   set +e
 }
 
