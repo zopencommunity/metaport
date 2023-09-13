@@ -33,6 +33,7 @@ zopen_check()
 
   # Set ZOPEN_INSTALL_DIR back to the original
   ZOPEN_INSTALL_DIR=$OLD_INSTALL_DIR
+  cd -
 }
 
 zopen_check_results()
@@ -52,9 +53,9 @@ zopen_install()
 {
   set -e
   mkdir -p "$ZOPEN_INSTALL_DIR"
-  rm -rf "$PWD/zotsampleport"
-  rm -rf "$PWD/.git"* "$PWD/.editorconfig"
-  cp -r "$PWD/" "$ZOPEN_INSTALL_DIR/"
+  rm -rvf "$PWD/zotsampleport"
+  rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
+  cp -rv "$PWD/" "$ZOPEN_INSTALL_DIR/"
   set +e
 }
 
