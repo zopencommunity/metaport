@@ -62,3 +62,12 @@ zopen_install()
 zopen_append_to_setup() {
 }
 
+zopen_get_version()
+{
+  version=$(./bin/zopen --version 2>/dev/null)
+  if [ $? -gt 0 ]; then
+    echo "1.0.1" # temporary - using an 'old' meta that does not support --version yet
+  else
+    echo "${version}" | awk '{ print $2; }'
+  fi
+}
