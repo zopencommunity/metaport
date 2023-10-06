@@ -14,26 +14,23 @@ zopen_init()
 
 zopen_check()
 {
-  # Test zopen with zotsampleport:
-  . ./.env
+  WORK_DIR="${ZOPEN_ROOT}/work"
+
+  #
+  # Set up environment
+  #
+  . ${ZOPEN_ROOT}/meta/.env
 
   # Avoid inheriting this buildenv's environment variables
   unset ZOPEN_CHECK
   unset ZOPEN_MAKE
   unset ZOPEN_CONFIGURE
 
-  # Use a local install dir
-  OLD_INSTALL_DIR=$ZOPEN_INSTALL_DIR
-  ZOPEN_INSTALL_DIR=$PWD/zotsampleport/install
-
-  git clone https://github.com/ZOSOpenTools/zotsampleport.git
-  cd zotsampleport
-
-  zopen build -v
-
-  # Set ZOPEN_INSTALL_DIR back to the original
-  ZOPEN_INSTALL_DIR=$OLD_INSTALL_DIR
-  cd -
+  for test in ${ZOPEN_ROOT}/tests/zopen_check_* ; do
+    if "${test}" "${WORK_DIR}" ; then
+      return 1
+    fi
+  done
 }
 
 zopen_check_results()

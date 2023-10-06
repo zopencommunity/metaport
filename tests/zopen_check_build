@@ -1,0 +1,33 @@
+#!/bin/sh
+
+#
+# Basic 'zopen build' test using zotsampleport
+#
+set -x
+set -e # hard failure if any commands fail
+
+WORKDIR="$1"
+
+cd "${WORKDIR}"
+
+# Use a local install dir
+ZOPEN_INSTALL_DIR=$WORKDIR/zotsampleport-install
+
+rm -rf "${ZOPEN_INSTALL_DIR}" 
+rm -rf zotsampleport 
+
+mkdir -p "${ZOPEN_INSTALL_DIR}"
+mkdir zotsampleport
+
+git clone https://github.com/ZOSOpenTools/zotsampleport.git
+
+cd zotsampleport
+
+zopen build -v 
+
+cd "${WORKDIR}"
+
+rm -rf zotsampleport
+
+exit 0
+
