@@ -15,6 +15,7 @@ zopen_init()
 zopen_check()
 {
   WORK_DIR="${ZOPEN_ROOT}/work"
+  mkdir -p "${WORK_DIR}"
 
   #
   # Set up environment

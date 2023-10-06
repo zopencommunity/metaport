@@ -8,26 +8,20 @@ set -e # hard failure if any commands fail
 
 WORKDIR="$1"
 
-cd "${WORKDIR}"
-
 # Use a local install dir
-ZOPEN_INSTALL_DIR=$WORKDIR/zotsampleport-install
+SAMPLE_PORT_DIR="${WORKDIR}/zotsampleport"
+ZOPEN_INSTALL_DIR="${WORKDIR}/zotsampleport-install"
 
-rm -rf "${ZOPEN_INSTALL_DIR}" 
-rm -rf zotsampleport 
+rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 
 mkdir -p "${ZOPEN_INSTALL_DIR}"
-mkdir zotsampleport
+mkdir -p "${SAMPLE_PORT_DIR}"
 
-git clone https://github.com/ZOSOpenTools/zotsampleport.git
+( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
 
-cd zotsampleport
+( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
 
-zopen build -v 
-
-cd "${WORKDIR}"
-
-rm -rf zotsampleport
+rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 
 exit 0
 
