@@ -1,0 +1,25 @@
+#!/bin/sh
+
+#
+# Basic 'zopen version' check for all tools in 'bin'
+#
+set -e # hard failure if any commands fail
+set -x
+WORKDIR="$1"
+zopen_tool_binary=`whence zopen`
+zopen_tool_directory=$( dirname ${zopen_tool_binary} )
+
+#
+# msf - this should be all tools of the pattern zopen-* but that would break this test right now
+# 
+tools="zopen-init zopen-build zopen-install zopen-generate zopen-query zopen-remove zopen-alt zopen-clean"
+for zopen_tool in $tools; do
+  "${zopen_tool}" --version >/dev/null 
+  if [ $? -gt 0 ]; then
+    echo "${zopen_tool} has not implemented --version option" >&2
+    exit 4
+  fi
+done
+
+exit 0
+

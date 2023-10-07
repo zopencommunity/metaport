@@ -1,0 +1,32 @@
+#!/bin/sh
+
+#
+# Basic 'zopen build' test using zotsampleport
+#
+set -e # hard failure if any commands fail
+set -x
+WORKDIR="$1"
+
+# Use a local install dir
+SAMPLE_PORT_DIR="${WORKDIR}/zotsampleport"
+ZOPEN_INSTALL_DIR="${WORKDIR}/zotsampleport-install"
+
+rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
+
+mkdir -p "${ZOPEN_INSTALL_DIR}"
+mkdir -p "${SAMPLE_PORT_DIR}"
+
+( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
+
+
+  # Avoid inheriting this buildenv's environment variables
+
+  set | grep ZOPEN_
+  exit 0
+
+( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
+
+rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
+
+exit 0
+

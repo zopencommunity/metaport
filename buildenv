@@ -14,26 +14,26 @@ zopen_init()
 
 zopen_check()
 {
-  # Test zopen with zotsampleport:
-  . ./.env
+  WORK_DIR="${ZOPEN_ROOT}/work"
+  mkdir -p "${WORK_DIR}"
 
-  # Avoid inheriting this buildenv's environment variables
-  unset ZOPEN_CHECK
-  unset ZOPEN_MAKE
-  unset ZOPEN_CONFIGURE
+  #
+  # Set up environment
+  #
+  . ${ZOPEN_ROOT}/meta/.env
 
-  # Use a local install dir
-  OLD_INSTALL_DIR=$ZOPEN_INSTALL_DIR
-  ZOPEN_INSTALL_DIR=$PWD/zotsampleport/install
-
-  git clone https://github.com/ZOSOpenTools/zotsampleport.git
-  cd zotsampleport
-
-  zopen build -v
-
-  # Set ZOPEN_INSTALL_DIR back to the original
-  ZOPEN_INSTALL_DIR=$OLD_INSTALL_DIR
-  cd -
+  checks=${ZOPEN_ROOT}/tests/zopen_check_*
+  echo $checks
+  for check in $checks ; do
+    "${check}" "${WORK_DIR}"
+    rc=$?
+    if [ ${rc} -gt 0 ]; then
+      echo "FAIL: ${check}"
+    else
+      echo "PASS: ${check}"
+    fi
+  done
+  return 0
 }
 
 zopen_check_results()
@@ -42,10 +42,10 @@ zopen_check_results()
   pfx="$2"
   chk="$1/$2_check.log"
 
-  grep -q "Test results: 1 tests pass out of 1 tests" $chk
-  failures=$?
-  echo "actualFailures:$failures"
-  echo "totalTests:1"
+  pass=$( cat "${chk}" | grep -E '^PASS: ' | wc -l)
+  fail=$( cat "${chk}" | grep -E '^FAIL: ' | wc -l)
+  echo "actualFailures:$fail"
+  echo "totalTests:$(( pass+fail ))"
   echo "expectedFailures:0"
 }
 
