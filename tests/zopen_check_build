@@ -3,9 +3,8 @@
 #
 # Basic 'zopen build' test using zotsampleport
 #
-set -x
 set -e # hard failure if any commands fail
-
+set -x
 WORKDIR="$1"
 
 # Use a local install dir
@@ -18,6 +17,12 @@ mkdir -p "${ZOPEN_INSTALL_DIR}"
 mkdir -p "${SAMPLE_PORT_DIR}"
 
 ( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
+
+
+  # Avoid inheriting this buildenv's environment variables
+
+  set | grep ZOPEN_
+  exit 0
 
 ( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
 

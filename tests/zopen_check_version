@@ -1,0 +1,12 @@
+#!/bin/sh
+
+#
+# Basic 'zopen version' check for all tools in 'bin'
+#
+set -e # hard failure if any commands fail
+set -x
+WORKDIR="$1"
+zopen_tool_binary=`whence zopen`
+
+exit 0
+

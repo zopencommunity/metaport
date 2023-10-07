@@ -22,16 +22,18 @@ zopen_check()
   #
   . ${ZOPEN_ROOT}/meta/.env
 
-  # Avoid inheriting this buildenv's environment variables
-  unset ZOPEN_CHECK
-  unset ZOPEN_MAKE
-  unset ZOPEN_CONFIGURE
-
-  for test in ${ZOPEN_ROOT}/tests/zopen_check_* ; do
-    if "${test}" "${WORK_DIR}" ; then
-      return 1
+  checks=${ZOPEN_ROOT}/tests/zopen_check_*
+  echo $checks
+  for check in $checks ; do
+    "${check}" "${WORK_DIR}"
+    rc=$?
+    if [ ${rc} -gt 0 ]; then
+      echo "FAIL: ${check}"
+    else
+      echo "PASS: ${check}"
     fi
   done
+  return 0
 }
 
 zopen_check_results()
@@ -40,10 +42,10 @@ zopen_check_results()
   pfx="$2"
   chk="$1/$2_check.log"
 
-  grep -q "Test results: 1 tests pass out of 1 tests" $chk
-  failures=$?
-  echo "actualFailures:$failures"
-  echo "totalTests:1"
+  pass=$( cat "${chk}" | grep -E '^PASS: ' | wc -l)
+  fail=$( cat "${chk}" | grep -E '^FAIL: ' | wc -l)
+  echo "actualFailures:$fail"
+  echo "totalTests:$(( pass+fail ))"
   echo "expectedFailures:0"
 }
 
