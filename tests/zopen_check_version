@@ -9,10 +9,7 @@ WORKDIR="$1"
 zopen_tool_binary=`whence zopen`
 zopen_tool_directory=$( dirname ${zopen_tool_binary} )
 
-#
-# msf - this should be all tools of the pattern zopen-* but that would break this test right now
-# 
-tools="zopen-init zopen-build zopen-install zopen-generate zopen-query zopen-remove zopen-alt zopen-clean"
+tools=$( cd "${zopen_tool_directory}" && echo zopen zopen-* )
 for zopen_tool in $tools; do
   "${zopen_tool}" --version >/dev/null 
   if [ $? -gt 0 ]; then
