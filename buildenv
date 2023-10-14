@@ -5,17 +5,17 @@ export ZOPEN_GIT_DEPS="git gzip make tar zoslib"
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
-export ZOPEN_INSTALL="zopen_install"
 
-if ! [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
+if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
+  export ZOPEN_INSTALL="zopen_install"
+else
+  export ZOPEN_INSTALL='skip'
+  echo "Installation will not be performed - testing dev environment"
 
   if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
     echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
     return 8
   fi
-
-  # Do not install this code - just test it
-  export ZOPEN_INSTALL=skip
 
   # Set up our own 'meta' to use from our dev code and skip install
   basename=$(basename "${ZOPEN_META_DEV_ROOT}")
