@@ -11,7 +11,7 @@ if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
   if [ -d "${META_DEV_DIR}" ]; then
     if [ -L "${META_DEV_DIR}" ]; then
       echo "ZOPEN_META_DEV_ROOT is NOT set, but ${META_DEV_DIR} is a symbolic link. Either set ZOPEN_META_DEV_ROOT or remove the symbolic link"
-      return 8
+      exit 8
     fi
   fi
   export ZOPEN_INSTALL="zopen_install"
@@ -21,14 +21,14 @@ else
 
   if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
     echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
-    return 8
+    exit 8
   fi
 
   # Set up our own 'meta' to use from our dev code and skip install
   basename=$(basename "${ZOPEN_META_DEV_ROOT}")
   if [ "x${basename}" != "xmeta" ]; then
     echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
-    return 8
+    exit 8
   fi
 
   if [ -d "${META_DEV_DIR}" ]; then
@@ -46,7 +46,7 @@ else
       
   if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" ; then
     echo "Unable to create symbolic from from ${META_DEV_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
-    return 8
+    exit 8
   fi
 fi
 
