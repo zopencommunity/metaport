@@ -16,9 +16,9 @@ mkdir -p "${ZOPEN_INSTALL_DIR}"
 mkdir -p "${SAMPLE_PORT_DIR}"
 
 ( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
-exit 0
 
-( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
+( cd "${SAMPLE_PORT_DIR}" && exec zopen build -v )
+exit 0
 
 rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 

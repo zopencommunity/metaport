@@ -7,6 +7,37 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
+if ! [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
+  # Do not install this code - just test it
+  export ZOPEN_INSTALL=skip
+
+  # Set up our own 'meta' to use from our dev code and skip install
+  basename=$(basename "${ZOPEN_META_DEV_ROOT}")
+  if [ "x${basename}" != "xmeta" ]; then
+    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
+    return 8
+  fi
+
+  META_DIR="${PWD}/meta"
+  if [ -d "${META_DIR}" ]; then
+    if ! [ -L "${META_DIR}" ]; then
+      # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
+      mv "${META_DIR}" "${META_DIR}-cloned"
+    else
+      # There may already be a symbolic link here - if so, delete it in case it is stale
+      rm "${META_DIR}"
+    fi
+  else
+    echo "${META_DIR} should be a directory or symbolic link pointing to a directory. It is neither" >&2
+    return 8
+  fi
+      
+  if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DIR}" ; then
+    echo "Unable to create symbolic from from ${META_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
+    return 8
+  fi
+fi
+
 zopen_init()
 {
   export PATH="$PWD/bin:$PATH"
