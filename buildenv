@@ -8,6 +8,12 @@ export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
 if ! [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
+
+  if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
+    echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
+    return 8
+  fi
+
   # Do not install this code - just test it
   export ZOPEN_INSTALL=skip
 
@@ -28,8 +34,8 @@ if ! [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
       rm "${META_DIR}"
     fi
   else
-    echo "${META_DIR} should be a directory or symbolic link pointing to a directory. It is neither" >&2
-    return 8
+    # Directory has not yet been cloned - just have symbolic link created (next)
+    :
   fi
       
   if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DIR}" ; then
@@ -41,6 +47,16 @@ fi
 zopen_init()
 {
   export PATH="$PWD/bin:$PATH"
+
+  myzopen=$( whence zopen )
+  if [ $? -gt 0 ]; then
+    echo "Error - unable to find zopen in the PATH" >&2
+    return 8
+  fi
+  if [ "${myzopen}" != "${PWD}/bin/zopen" ]; then
+    echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
+    return 8
+  fi
 }
 
 zopen_check()
