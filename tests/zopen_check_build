@@ -26,6 +26,13 @@ export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
 export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
 export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
+if ! [ -z "${ZOPEN_ZOT_SAMPLEPORT_BRANCH_SAVE}" ]; then
+  zotsamplebranch="${ZOPEN_ZOT_SAMPLEPORT_BRANCH_SAVE}"
+  echo "Using ${zotsamplebranch} branch instead of default branch"
+else
+  zotsamplebranch="main"
+fi
+
 rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 
 mkdir -p "${ZOPEN_INSTALL_DIR}"
@@ -33,7 +40,7 @@ mkdir -p "${SAMPLE_PORT_DIR}"
 
 ( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
 
-( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
+( cd "${SAMPLE_PORT_DIR}" && git checkout "${zotsamplebranch}" && zopen build -v )
 
 rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 
