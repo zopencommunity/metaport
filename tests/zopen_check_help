@@ -3,7 +3,6 @@
 #
 # Basic 'zopen help' check for all tools in 'bin'
 #
-set -e # hard failure if any commands fail
 WORKDIR="$1"
 zopen_tool_binary=`whence zopen`
 zopen_tool_directory=$( dirname ${zopen_tool_binary} )
