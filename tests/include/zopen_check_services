@@ -1,0 +1,41 @@
+#
+# Meant to be sourced - provides services to be shared across zopen_check_xxx routines
+#
+
+zopen_save_and_clear()
+{
+  entries=$( set | grep -E '^ZOPEN_')
+  OLDIFS="$IFS"
+  IFS=$'\n'
+  for entry in $entries; do
+    val=${entry#*=}
+    key=${entry%%=*}
+    save_cmd='export ${key}_SAVE=${val}'
+    eval $save_cmd
+    clear_cmd='unset ${key}'
+    eval $clear_cmd
+  done
+  IFS="$OLDIFS"
+}
+
+zopen_clear_and_restore()
+{
+  entries=$( set | grep -E '^ZOPEN_')
+  OLDIFS="$IFS"
+  IFS=$'\n'
+  for entry in $entries; do
+    val=${entry#*=}
+    key=${entry%%=*}
+    origkey=${key%%_SAVE}
+    if [ "${origkey}" != "${key}" ]; then
+      restore_cmd='export ${origkey}=${val}'
+      eval $restore_cmd
+      clear_cmd='unset ${key}'
+      eval $clear_cmd
+    fi
+  done
+  IFS="$OLDIFS"
+}
+
+
+
