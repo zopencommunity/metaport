@@ -8,6 +8,10 @@ zopen_tool_binary=`whence zopen`
 zopen_tool_directory=$( dirname ${zopen_tool_binary} )
 
 tools=$( cd "${zopen_tool_directory}" && echo zopen zopen-* )
+if [ -z "${tools}" ]; then
+  echo "No zopen tools found. There should be several" >&2
+  exit 4
+fi
 for zopen_tool in $tools; do
   "${zopen_tool}" --help >/dev/null 2>&1
   if [ $? -gt 0 ]; then
