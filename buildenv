@@ -5,11 +5,64 @@ export ZOPEN_GIT_DEPS="git gzip make tar bash zoslib"
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
-export ZOPEN_INSTALL="zopen_install"
+
+META_DEV_DIR="${PWD}/meta"
+if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
+  if [ -d "${META_DEV_DIR}" ]; then
+    if [ -L "${META_DEV_DIR}" ]; then
+      echo "ZOPEN_META_DEV_ROOT is NOT set, but ${META_DEV_DIR} is a symbolic link. Either set ZOPEN_META_DEV_ROOT or remove the symbolic link"
+      exit 8
+    fi
+  fi
+  export ZOPEN_INSTALL="zopen_install"
+else
+  export ZOPEN_INSTALL='skip'
+  echo "Installation will not be performed - testing dev environment"
+
+  if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
+    echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
+    exit 8
+  fi
+
+  # Set up our own 'meta' to use from our dev code and skip install
+  basename=$(basename "${ZOPEN_META_DEV_ROOT}")
+  if [ "x${basename}" != "xmeta" ]; then
+    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
+    exit 8
+  fi
+
+  if [ -d "${META_DEV_DIR}" ]; then
+    if ! [ -L "${META_DEV_DIR}" ]; then
+      # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
+      mv "${META_DEV_DIR}" "${META_DEV_DIR}-cloned"
+    else
+      # There may already be a symbolic link here - if so, delete it in case it is stale
+      rm "${META_DEV_DIR}"
+    fi
+  else
+    # Directory has not yet been cloned - just have symbolic link created (next)
+    :
+  fi
+      
+  if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" ; then
+    echo "Unable to create symbolic from ${META_DEV_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
+    exit 8
+  fi
+fi
 
 zopen_init()
 {
   export PATH="$PWD/bin:$PATH"
+
+  myzopen=$( whence zopen )
+  if [ $? -gt 0 ]; then
+    echo "Error - unable to find zopen in the PATH" >&2
+    return 8
+  fi
+  if [ "${myzopen}" != "${PWD}/bin/zopen" ]; then
+    echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
+    return 8
+  fi
 }
 
 zopen_check()
