@@ -11,6 +11,14 @@ Export ZOPEN_META_DEV_ROOT to the root of your cloned git 'meta' repo, e.g
 export ZOPEN_META_DEV_ROOT=$HOME/zopen/dev/meta/
 ```
 
+By default, metaport will pull down the latest 'zotsampleport' repo.
+To test against a branch under development, do the following:
+
+Export ZOPEN_ZOT_SAMPLEPORT_BRANCH to the branch of 'zopensampleport' repo you want to test, e.g.
+```
+export ZOPEN_ZOT_SAMPLEPORT_BRANCH=updateversion
+```
+
 Change directory to your 'metaport' repo, e.g.
 ```
 cd $HOME/zopen/dev/metaport
