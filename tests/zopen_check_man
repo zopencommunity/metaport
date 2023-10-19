@@ -1,0 +1,16 @@
+#!/bin/sh
+
+#
+# Basic 'zopen-help2man' check for all tools in 'bin'
+# This check can likely disappear once it is added into the install process
+#
+set -e # hard failure if any commands fail
+WORKDIR="$1"
+
+if zopen-help2man "${WORKDIR}" ; then
+  echo "zopen-help2man was unsuccessful in creating man files from the --help and --version options" >&2
+  exit 4
+fi
+
+exit 0
+
