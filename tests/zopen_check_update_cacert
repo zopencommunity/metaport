@@ -10,7 +10,7 @@ zopen_tool_directory=$( dirname ${zopen_tool_binary} )
 
 cacertpath="${WORKDIR}/cacert.pem"
 
-if ! zopen update-cacert -f "${WORKDIR}" ; then
+if ! zopen update-cacert -f "${WORKDIR}"; then
     echo "zopen update-cacert failed."
     return 4
 fi

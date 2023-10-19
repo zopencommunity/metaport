@@ -1,6 +1,6 @@
 export ZOPEN_GIT_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_TYPE="GIT"
-export ZOPEN_GIT_DEPS="git gzip make tar bash zoslib help2man curl"
+export ZOPEN_GIT_DEPS="git gzip make tar bash zoslib help2man curl grep"
 
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
