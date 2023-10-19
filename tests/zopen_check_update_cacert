@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#
+# Basic 'zopen update-cacert' check
+#
+
+WORKDIR="$1"
+zopen_tool_binary=`whence zopen`
+zopen_tool_directory=$( dirname ${zopen_tool_binary} )
+
+cacertpath="${WORKDIR}/cacert.pem"
+
+if ! zopen update-cacert -f "${WORKDIR}" ; then
+    echo "zopen update-cacert failed."
+    return 4
+fi
+
+if [ ! -r "${cacertpath}" ]; then
+  echo "Cacert ${cacertpath} is not readable."
+  return 4
+fi
+
+if ! grep "Bundle of CA Root Certificates" "${cacertpath}"; then
+  echo "Cacert ${cacertpath} is not a valid certificate."
+  return 4
+fi
+
+rm -f "${cacertpath}"
+
+exit 0
