@@ -1,14 +1,38 @@
-#!/bin/sh
+#!/bin/env bash
 
 #
-# Basic 'zopen build' test using zotsampleport
+# Basic 'zopen build' test using zotsampleport (note this REQUIRES bash)
 #
 set -e # hard failure if any commands fail
 WORKDIR="$1"
 
+ME=$(basename $0)
+MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
+
+. "${MYDIR}/include/zopen_check_services"
+
+zopen_save_and_clear
+
 # Use a local install dir
-SAMPLE_PORT_DIR="${WORKDIR}/zotsampleport"
-ZOPEN_INSTALL_DIR="${WORKDIR}/zotsampleport-install"
+export SAMPLE_PORT_DIR="${WORKDIR}/zotsampleport"
+export ZOPEN_INSTALL_DIR="${WORKDIR}/zotsampleport-install"
+export ZOPEN_DONT_PROCESS_CONFIG=true
+
+# Set up environment variables needed for 'build'
+# Need to restore 'ZOPEN_OLD_PATH' to propagate key PATHs for compilers
+export PATH="${MYDIR}/../meta/bin:${PATH}:${ZOPEN_OLD_PATH_SAVE}"
+export ZOPEN_CA="$ZOPEN_CA_SAVE"
+export ZOPEN_ROOTFS="$ZOPEN_ROOTFS_SAVE"
+export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
+export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
+export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
+
+if ! [ -z "${ZOPEN_ZOT_SAMPLEPORT_BRANCH_SAVE}" ]; then
+  zotsamplebranch="${ZOPEN_ZOT_SAMPLEPORT_BRANCH_SAVE}"
+  echo "Using ${zotsamplebranch} branch instead of default branch"
+else
+  zotsamplebranch="main"
+fi
 
 rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
 
@@ -16,11 +40,12 @@ mkdir -p "${ZOPEN_INSTALL_DIR}"
 mkdir -p "${SAMPLE_PORT_DIR}"
 
 ( cd "${WORKDIR}" && git clone https://github.com/ZOSOpenTools/zotsampleport.git )
-exit 0
 
-( cd "${SAMPLE_PORT_DIR}" && zopen build -v )
+( cd "${SAMPLE_PORT_DIR}" && git checkout "${zotsamplebranch}" && zopen build -v )
 
 rm -rf "${ZOPEN_INSTALL_DIR}" "${WORKDIR}/zotsampleport"
+
+zopen_clear_and_restore
 
 exit 0
 
