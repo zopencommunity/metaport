@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#
+# Basic 'zopen generate' tool
+#
+WORKDIR="$1"
+
+fillinprompts="
+ProjectNameTester
+mit
+https://github.com/stable/ProjectNameMaster.git
+make
+https://github.com/dev/ProjectNameMaster.git
+cmake
+stable
+bash
+"
+
+cd "${WORKDIR}" && echo "${fillinprompts}" | zopen-generate
