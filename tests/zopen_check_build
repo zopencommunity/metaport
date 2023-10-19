@@ -19,7 +19,8 @@ export ZOPEN_INSTALL_DIR="${WORKDIR}/zotsampleport-install"
 export ZOPEN_DONT_PROCESS_CONFIG=true
 
 # Set up environment variables needed for 'build'
-export PATH="${MYDIR}/../meta/bin:${PATH}"
+# Need to restore 'ZOPEN_OLD_PATH' to propagate key PATHs for compilers
+export PATH="${MYDIR}/../meta/bin:${PATH}:${ZOPEN_OLD_PATH_SAVE}"
 export ZOPEN_CA="$ZOPEN_CA_SAVE"
 export ZOPEN_ROOTFS="$ZOPEN_ROOTFS_SAVE"
 export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
