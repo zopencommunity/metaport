@@ -7,7 +7,7 @@
 set -e # hard failure if any commands fail
 WORKDIR="$1"
 
-if zopen-help2man "${WORKDIR}" ; then
+if ! zopen-help2man "${WORKDIR}" ; then
   echo "zopen-help2man was unsuccessful in creating man files from the --help and --version options" >&2
   exit 4
 fi
