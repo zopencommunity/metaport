@@ -109,8 +109,8 @@ zopen_install()
   rm -rvf "$PWD/zotsampleport"
   rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
-  mkdir -p "$ZOPEN_INSTALL_DIR/man"
-  zopen-help2man "$ZOPEN_INSTALL_DIR/man"
+  mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
+  zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
   set +e
 }
 
