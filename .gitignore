@@ -1,6 +1,7 @@
 log/
 log.DEV/
 meta/
+meta-cloned/
 meta
 install/
 work/
