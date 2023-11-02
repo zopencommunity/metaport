@@ -1,6 +1,6 @@
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_BUILD_LINE="DEV"
-export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man curl grep"
+export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
 
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
@@ -105,12 +105,26 @@ zopen_check_results()
 zopen_install()
 {
   set -e
+  perlver=$(perl --version | head -2 | tail -1 | awk ' { print $4 }' | tr -d ',')
+  perlrel=$(perl --version | head -2 | tail -1 | awk ' { print $6 }' | tr -d ',')
+  if [ $perlver -lt 5 ] || [ $perlrel -lt 38 ]; then
+    echo "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
+    return 8
+  fi
   mkdir -p "$ZOPEN_INSTALL_DIR"
   rm -rvf "$PWD/zotsampleport"
   rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
+  mkdir -p "$ZOPEN_INSTALL_DIR/ref"
+  echo "HTML reference pages will be written to $ZOPEN_INSTALL_DIR/ref"
+  for man in $ZOPEN_INSTALL_DIR/man/man1/*.1; do
+    base=${man##*/}
+    name=${base%%.1}
+    html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
+    groff -m mandoc -Thtml -Wall "${man}" >"${html}"
+  done
   set +e
 }
 
