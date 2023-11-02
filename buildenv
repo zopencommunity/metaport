@@ -1,5 +1,8 @@
-export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
+# bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
+META_VERSION="0.8.0"
+
 export ZOPEN_BUILD_LINE="DEV"
+export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man curl grep"
 
 export ZOPEN_CONFIGURE="skip"
@@ -116,7 +119,6 @@ zopen_install()
 
 zopen_append_to_setup() {
 }
-
 
 zopen_get_version()
 {
