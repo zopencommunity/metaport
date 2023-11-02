@@ -1,4 +1,6 @@
-metaport
+[![Automatic version updates](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml/badge.svg)](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml)
+
+# meta
 
 A test validation of our 'meta' tools. 
 metaport MUST be run before any code in 'meta' repo can be merged into main
