@@ -5,8 +5,8 @@
 #
 WORKDIR="$1"
 
-fillinprompts="
-ProjectNameTester
+fillinprompts="ProjectName
+Project Name Description
 mit
 https://github.com/stable/ProjectNameMaster.git
 make
@@ -16,4 +16,4 @@ stable
 bash
 "
 
-cd "${WORKDIR}" && echo "${fillinprompts}" | zopen-generate
+cd "${WORKDIR}" && echo "${fillinprompts}" | zopen-generate && rm -rf ProjectNameport
