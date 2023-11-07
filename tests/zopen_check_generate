@@ -7,6 +7,7 @@ WORKDIR="$1"
 
 fillinprompts="ProjectName
 Project Name Description
+language
 mit
 https://github.com/stable/ProjectNameMaster.git
 make
