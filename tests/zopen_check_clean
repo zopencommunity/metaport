@@ -1,0 +1,65 @@
+#!/bin/sh
+
+#
+# Basic clean test
+#
+set -e # hard failure if any commands fail
+WORKDIR="$1"
+
+fail(){ echo "Test failure: $*"; exit 8; }
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+export ZOPEN_ROOTFS="${zopenenv}"
+export ZOPEN_PKGINSTALL="${ZOPEN_ROOTFS}/usr/local/zopen"
+testpkg="testpackage"
+
+echo "Creating dummy package version directories"
+testversions=10
+i=0; while [ $i -le $testversions ]; do
+  i=$((i + 1))
+  mkdir -p "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}"
+  # create dummy symlinks - these should not be removed and not affect
+  # the "active" processing 
+  ln -s "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}" "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}.symlink"
+done
+
+echo "Creating symlinked installed version"
+ln -s "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}" "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}"
+
+echo "Displaying status:"
+ls -l "${ZOPEN_PKGINSTALL}/${testpkg}/"
+
+echo "Ensuring zopen clean is available"
+if ! (zopen clean --version >/dev/null 2>&1); then fail "No version of zopen clean found"; fi
+
+if ! zopen clean --unused "${testpkg}"; then fail "Clean of test package failed"; fi
+
+echo "Checking removal complete"
+# Note this is a -lt not -le as above; the last version should still be active
+i=0; while [ $i -lt $testversions ]; do
+  i=$((i + 1))
+  [ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}" ] && fail "Found remaining unused directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}'"
+  [ ! -L "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}.symlink" ] && fail "Symlinked directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}.symlink' removed unexpectedly"
+done
+
+echo "Check active version is still available"
+[ ! -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-$((testversions+1)).$((testversions+1))" ] \
+  && fail "Active version was removed"
+[ ! -L "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}" ] \
+  && fail "Active version symlink was removed"
+
+echo "Check dangling symlinks"
+# These should be created above, ignored by the unusued processing and now dangling
+zopen clean -d
+
+i=0; while [ $i -lt $testversions ]; do
+  i=$((i + 1))
+  [ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${i}.${i}.symlink" ] && fail "Symlinked directory found when orphaned"  
+done
+[ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink" ] && fail "Symlinked directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink' was not found, but should not have been an orphan"
+
+
+exit 0
+

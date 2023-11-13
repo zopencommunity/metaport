@@ -81,6 +81,10 @@ zopen_check()
   checks=${ZOPEN_ROOT}/tests/zopen_check_*
   echo $checks
   for check in $checks ; do
+    [ ! -x "${check}" ] \
+      && echo "FAIL: ${check} (test script is not executable)" \
+      && continue
+      echo "Running: ${check}"
     "${check}" "${WORK_DIR}"
     rc=$?
     if [ ${rc} -gt 0 ]; then
