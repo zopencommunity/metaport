@@ -1,0 +1,154 @@
+#!/bin/sh
+
+#
+# FVT of zopen
+#
+#set -e # hard failure if any commands fail
+set -x
+WORKDIR="$1"
+
+fail(){ echo "$@"; exit 8; }
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+#trap -- "rm -rf ${zopenenv}" EXIT INT TERM QUIT HUP
+mkdir -p "${zopenenv}"
+zopen_tool_binary=$(whence zopen)
+zopen init -y --re-init "${zopenenv}"  #specify re-init to ensure an env
+echo "Rc=$?"
+
+echo "Testing if zopen was installed at: ${zopenenv}/usr/local/zopen"
+[ ! -e "${zopenenv}/usr/local/zopen" ] && fail "File system not available"
+echo "Testing source of the zopen-config file"
+[ ! -e "${zopenenv}/etc/zopen-config" ] && fail "xopen configuration not available" 
+
+echo "Testing source of configuration file"
+# shellcheck disable=SC1091
+. "${zopenenv}/etc/zopen-config"
+[ -z "${ZOPEN_ROOTFS}" ] && fail "zopen required envvar ZOPEN_ROOTFS not set"
+
+echo "Testing the zopen version is set correctly (according to zopen-config)"
+zopen_binary=$(whence zopen)
+[ ! "${zopen_binary}" = "${zopenenv}/usr/local/bin/zopen" ] && fail "Incorrectly sourced zopen-config"
+
+echo "Hardcoding test meta into PATH"
+# Hac..fix to ensure we use the test meta
+export PATH="$(dirname "${zopen_tool_binary}"):${PATH}"
+zopen_binary=$(whence zopen)
+
+[ ! "${zopen_binary}" = "${zopen_tool_binary}" ] && fail "Could not reset to use test meta"
+
+zopen list --installed
+
+testPkg="xz"
+tempDir="${ZOPEN_ROOTFS}/tmp"
+
+echo "Installing packages"
+if ! zopen install -y which git ${testPkg}; then
+  fail "Error installing test packages"
+fi
+
+echo "Verifying package installation"
+if ! installList=$(zopen list --installed); then
+  fail "List command [--installed] failed"
+fi
+
+echo "Test local pax install"
+echo "Found pax files: $(ls -l "${ZOPEN_ROOTFS}/var/cache/zopen/")"
+echo "Copying known pax file from previous installation"
+if ! cp "${ZOPEN_ROOTFS}/var/cache/zopen/${testPkg}"*".pax.Z" "${tempDir}"; then
+  fail "Copy failed"
+fi
+
+echo "Removing existing test package"
+if ! zopen remove --verbose --purge ${testPkg}; then
+  fail "Removal of existing '${testPkg}' package failed"
+fi
+
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -n "${installedOk}" ]; then
+  fail "${testPkg} was listed as installed"
+fi
+
+echo "Stage 1. Re-installing from pax file: current directory, package name"
+curdir="${PWD}"
+cd "${tempDir}" || fail "Could not change to directory '${tempDir}"
+if ! zopen install -y --paxinstall "${testPkg}"; then
+  fail "Install of pax command [zopen install --paxinstall ${testPkg}] failed"
+fi
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -z "${installedOk}" ]; then
+  fail "${testPkg} was not listed as installed"
+fi
+
+echo "Re-Removing existing test package"
+if ! zopen remove --verbose --purge ${testPkg}; then
+  fail "Removal of existing '${testPkg}' package failed"
+fi
+
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -n "${installedOk}" ]; then
+  fail "${testPkg} was listed as installed"
+fi
+
+echo "Stage 2. Re-installing from pax file: external directory, package name"
+curdir="${PWD}"
+cd "${WORKDIR}" || fail "Could not change to directory '${tempDir}"
+if ! zopen install -y --paxinstall --paxrepodir "${tempDir}" "${testPkg}"; then
+  fail "Install of pax command [zopen install --paxinstall --paxrepodir ${tempDir} ${testPkg}] failed"
+fi
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -z "${installedOk}" ]; then
+  fail "${testPkg} was not listed as installed"
+fi
+
+echo "Re-Removing existing test package"
+if ! zopen remove --verbose --purge ${testPkg}; then
+  fail "Removal of existing '${testPkg}' package failed"
+fi
+
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -n "${installedOk}" ]; then
+  fail "${testPkg} was listed as installed"
+fi
+
+echo "Stage 3. Re-installing from pax file: current directory, package with ver"
+curdir="${PWD}"
+cd "${tempDir}" || fail "Could not change to directory '${tempDir}"
+# shellcheck disable=SC2125  # there should only be one testpkg.pax.Z in the directory!
+verpaxfile=${testPkg}*
+echo "Using testpackage file: ${verpaxfile}"
+if ! zopen install -y --paxinstall "${testPkg}"; then
+  fail "Install of pax command [zopen install --paxinstall ${testPkg}] failed"
+fi
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "${testPkg} ")
+if [ -z "${installedOk}" ]; then
+  fail "${testPkg} was not listed as installed"
+fi
+
+
+cd "${curdir}" || fail "Could not change back to directory"
+echo "Clearing resources"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+set +x
+exit 0
+
