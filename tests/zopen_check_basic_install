@@ -38,7 +38,7 @@ zopen_binary=$(whence zopen)
 
 zopen list --installed
 
-echo "Installing which"
+echo "Installing which [zopen install -y which]"
 if ! zopen install -y which; then
   fail "Error installing 'which' packages"
 fi
@@ -49,24 +49,73 @@ if [ ! "${whichWhich}" = "${zopenenv}/usr/local/bin/which" ]; then
   fail "Wrong which was used: expected: '${zopenenv}/usr/local/bin/which'; actual: '${whichWhich}'"
 fi
 
-echo "Running basic upgrade test"
+echo "Running basic upgrade test [zopen upgrade]"
 if ! zopen upgrade; then
   fail "Basic upgrade test failed. See previous errors"
 fi
 
-echo "Testing removal"
+echo "Testing removal [zopen remove which]"
 if ! zopen remove which; then
   fail "Error during removal of the 'which' package"
 fi
 if "${zopenenv}/usr/local/bin/which" which; then
   fail "The 'which' command should not be available at '${zopenenv}/usr/local/bin/which'"
 fi
-if ! installList=$(zopen list --installed --no-header); then
-  fail "List command [--installed --no-header] failed"
+if ! installList=$(zopen list --installed --no-header --no-version); then
+  fail "List command [--installed --no-header --no-version] failed"
 fi
 installedOk=$(echo "${installList}" | grep "which ")
 if [ -n "${installedOk}" ]; then
   fail "Package 'which' was listed as installed"
+fi
+
+echo "Testing removal of already removed / not installed package [zopen remove which]"
+if ! zopen remove which; then
+  # Note that zopen remove of a non-installed package is not in itself an 
+  # error as it is reporting correctly (that it can't install something that
+  # is not installed)
+  fail "Removal of a non-installed package resulted in an error"
+
+fi
+
+echo "Test non-valid package [zopen install -y foobar]"
+if zopen install -y foobar; then
+  fail "Attempt to install non-existant package did not fail"
+fi
+
+echo "Test valid package with port suffix [zopen install -y whichport]"
+if zopen install -y whichport; then
+  fail "Attempt to install incorrect package (with port suffix) did not fail"
+fi
+
+echo "Test mis-tagged package [zopen install -y xz%dummytag]"
+if zopen install -y xz%dummytag; then
+  fail
+fi
+
+echo "Test bad tagged, missing package [zopen install -y %25]"
+if zopen install -y %25; then
+  fail
+fi
+
+echo "Test tagged package [zopen install -y xz%25]"
+if zopen install -y xz%25; then
+  fail
+fi
+
+echo "Test not-found versioned package [zopen install -y which=1.2.3.4.5]"
+if zopen install -y which=1.2.3.4.5; then
+  fail "Attempt to install non-existent version of package did not fail"
+fi
+
+echo "Test versioned package [zopen install -y which=2.21.20230328_102133]"
+if ! zopen install -y which=2.21.20230328_102133; then
+  fail "Install of known available version (which 2.21.20230328_102133) failed"
+fi
+
+echo "Test odd versioning [zopen install -y =1.2.3.4]"
+if zopen install -y =1.2.3.4; then
+  fail "Install of versioned package with no package name did not fail"
 fi
 
 [ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
