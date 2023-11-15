@@ -1,0 +1,74 @@
+#!/bin/sh
+
+#
+# Basic install of zopen
+#
+
+fail(){ echo "$@"; exit 8; }
+WORKDIR="$1"
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+mkdir -p "${zopenenv}"
+zopen_tool_binary=$(whence zopen)
+zopen init -y --re-init "${zopenenv}"  #specify re-init to ensure an env
+echo "Rc=$?"
+
+echo "Testing if zopen was installed at: ${zopenenv}/usr/local/zopen"
+[ ! -e "${zopenenv}/usr/local/zopen" ] && echo "File system not available" && exit 8
+echo "Testing source of the zopen-config file"
+[ ! -e "${zopenenv}/etc/zopen-config" ] && echo "xopen configuration not available" && exit 8
+
+echo "Testing source of configuration file"
+# shellcheck disable=SC1091
+. "${zopenenv}/etc/zopen-config"
+[ -z "${ZOPEN_ROOTFS}" ] && echo "zopen required envvar ZOPEN_ROOTFS not set" && exit 8
+
+echo "Testing the zopen version is set correctly (according to zopen-config)"
+zopen_binary=$(whence zopen)
+[ ! "${zopen_binary}" = "${zopenenv}/usr/local/bin/zopen" ] && echo "Incorrectly sourced zopen-config" && exit 8
+
+echo "Hardcoding test meta into PATH"
+# Hac..fix to ensure we use the test meta
+export PATH="$(dirname "${zopen_tool_binary}"):${PATH}"
+zopen_binary=$(whence zopen)
+
+[ ! "${zopen_binary}" = "${zopen_tool_binary}" ] && echo "Could not reset to use test meta" && exit 8
+
+zopen list --installed
+
+echo "Installing which"
+if ! zopen install -y which; then
+  fail "Error installing 'which' packages"
+fi
+
+echo "Testing functionality of which"
+whichWhich=$(which which)
+if [ ! "${whichWhich}" = "${zopenenv}/usr/local/bin/which" ]; then
+  fail "Wrong which was used: expected: '${zopenenv}/usr/local/bin/which'; actual: '${whichWhich}'"
+fi
+
+echo "Running basic upgrade test"
+if ! zopen upgrade; then
+  fail "Basic upgrade test failed. See previous errors"
+fi
+
+echo "Testing removal"
+if ! zopen remove which; then
+  fail "Error during removal of the 'which' package"
+fi
+if "${zopenenv}/usr/local/bin/which" which; then
+  fail "The 'which' command should not be available at '${zopenenv}/usr/local/bin/which'"
+fi
+if ! installList=$(zopen list --installed --no-header); then
+  fail "List command [--installed --no-header] failed"
+fi
+installedOk=$(echo "${installList}" | grep "which ")
+if [ -n "${installedOk}" ]; then
+  fail "Package 'which' was listed as installed"
+fi
+
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+exit 0
+
