@@ -1,0 +1,113 @@
+#!/bin/sh
+
+#
+# Basic check that zopen-split-patch works
+# The test will create a local repo, make changes to the files under branch A
+# then save the set of patches between 'main' and branch A to a patch directory.
+# Then it will create a branch B off of main and use split-patch to break the 
+# original patches apart, and apply the patches to branch B, then finally compare
+# branch A and branch B to ensure they are the same
+#
+WORKDIR="$1"
+mywork="${WORKDIR}/splitwork"
+myrepo="${mywork}/splitrepo"
+mypatches="${mywork}/splitpatches"
+mytmp="${mywork}/splittmp"
+
+set -e 
+
+f1="F1.txt"
+f2="F2.txt"
+f3="F3.txt"
+aggpatch="aggregate.patch"
+
+rm -rf "${mywork}" && mkdir -p "${myrepo}" "${mypatches}" "${mytmp}" 
+
+cd "${myrepo}"
+
+git init -q --initial-branch=main
+
+echo "
+  1
+  2
+  3
+  This is the first file.
+  It is very simple.
+  6
+  7
+  8
+  9
+" >"${f1}"
+echo "
+  1
+  2
+  This is the second file.
+  It is also very simple.
+  5
+  6
+  7
+  8
+  9
+" >"${f2}"
+echo "
+  1
+  2
+  3
+  This is the third file.
+  It continues to be simple.
+  6
+  7
+  8
+  9
+" >"${f3}"
+
+git add . && git commit -q -m 'Initial set of files'
+
+#
+# Checkout a new branch and change all the files to have a capital F in them
+# and save the patches into 'aggpatch'
+#
+
+git checkout -q -bbrancha
+
+# Replace with sed -i if we pull in z/OS Open Tools 'sed'
+
+for f in $f1 $f2 $f3; do
+  cat "${f}" | tr 'f' 'F' >"${mytmp}/${f}" && mv "${mytmp}/${f}" "${f}"
+done  
+
+git diff >"${mypatches}/${aggpatch}" 
+
+git add . && git commit -q -m 'First set of patched files'
+
+#
+# Checkout a new branch, run split-patch to split apart the aggregate patch 
+# file into separate files, then apply all the patches to the new branch
+#
+cd "${myrepo}" 
+
+git checkout -q main && git checkout -q -bbranchb
+
+cd "${mypatches}" && zopen-split-patch "${aggpatch}"
+
+patches=$( (cd "${mypatches}/split-patches" && find . -name "*.patch" | sort))
+
+cd "${myrepo}"
+
+for patch in ${patches}; do
+  p="${mypatches}/split-patches/${patch}"
+  git apply "${p}"
+done
+
+git add . && git commit -q -m 'Second set of patched files'
+
+#
+# Compare branch A and branch B - they should be identical
+#
+if ! git diff brancha..branchb ; then
+  echo "The 2 branches should compare equal - test failed" >&2
+  exit 4
+fi
+
+exit 0
+
