@@ -90,7 +90,6 @@ git checkout -q main && git checkout -q -bbranchb
 
 cd "${mypatches}" && zopen-split-patch "${aggpatch}"
 
-set -x
 patches=$( (cd "${mypatches}/split-patches" && find . -name "*.patch" | sort))
 
 cd "${myrepo}"
@@ -105,5 +104,10 @@ git add . && git commit -q -m 'Second set of patched files'
 #
 # Compare branch A and branch B - they should be identical
 #
+if ! git diff brancha..branchb ; then
+  echo "The 2 branches should compare equal - test failed" >&2
+  exit 4
+fi
+
 exit 0
 
