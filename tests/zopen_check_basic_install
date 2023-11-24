@@ -18,7 +18,7 @@ echo "Rc=$?"
 echo "Testing if zopen was installed at: ${zopenenv}/usr/local/zopen"
 [ ! -e "${zopenenv}/usr/local/zopen" ] && echo "File system not available" && exit 8
 echo "Testing source of the zopen-config file"
-[ ! -e "${zopenenv}/etc/zopen-config" ] && echo "xopen configuration not available" && exit 8
+[ ! -e "${zopenenv}/etc/zopen-config" ] && echo "zopen configuration not available" && exit 8
 
 echo "Testing source of configuration file"
 # shellcheck disable=SC1091
