@@ -8,6 +8,7 @@ export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep gro
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
+export ZOPEN_INSTALL="zopen_install"
 
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
@@ -17,9 +18,7 @@ if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
       exit 8
     fi
   fi
-  export ZOPEN_INSTALL="zopen_install"
 else
-  export ZOPEN_INSTALL='skip'
   echo "Installation will not be performed - testing dev environment"
 
   if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
@@ -119,8 +118,10 @@ zopen_install()
     return 8
   fi
   mkdir -p "$ZOPEN_INSTALL_DIR"
-  rm -rvf "$PWD/zotsampleport"
-  rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
+  if [ -z "$ZOPEN_META_DEV_ROOT" ]; then
+    rm -rvf "$PWD/zotsampleport"
+    rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
+  fi
   cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
@@ -136,6 +137,9 @@ zopen_install()
 }
 
 zopen_append_to_setup() {
+cat <<ZZ
+  \$PWD/bin/zopen init --refresh
+ZZ
 }
 
 zopen_get_version()
