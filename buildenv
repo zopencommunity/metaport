@@ -138,7 +138,9 @@ zopen_install()
 
 zopen_append_to_setup() {
 cat <<ZZ
-  \$PWD/bin/zopen init --refresh
+  if [ -n "\$ZOPEN_ROOTFS" ] && [ -d "\$ZOPEN_ROOTFS" ]; then
+    \$PWD/bin/zopen init --refresh
+  fi
 ZZ
 }
 
