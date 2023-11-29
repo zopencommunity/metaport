@@ -138,8 +138,35 @@ zopen_install()
 
 zopen_append_to_setup() {
 cat <<ZZ
-  \$PWD/bin/zopen init --refresh
+  if [ -n "\$ZOPEN_ROOTFS" ] && [ -d "\$ZOPEN_ROOTFS" ] && [ -x "\$PWD/bin/zopen" ]; then
+    \$PWD/bin/zopen init --refresh
+  fi
 ZZ
+}
+
+zopen_pre_terminate() {
+  # Test setup of meta
+  set -e
+  rm -rf $ZOPEN_ROOT/zopen_test
+  cd $ZOPEN_INSTALL_DIR
+  unset ZOPEN_ROOTFS
+  rm -f .installed 
+  . ./.env
+  zopen init -y $ZOPEN_ROOT/zopen_test
+  . $ZOPEN_ROOT/zopen_test/etc/zopen-config
+  rm -rf .installed
+
+  # Test refresh on an existing install
+  timestamp1=$(stat -c %Y "$ZOPEN_ROOT/zopen_test/etc/zopen-config")
+  . ./.env # runs setup.sh which should now refresh the zopen-config
+  timestamp2=$(stat -c %Y "$ZOPEN_ROOT/zopen_test/etc/zopen-config")
+  
+  # zopen-config timestamp should be updated
+  if [ "$timestamp1" -ge "$timestamp2" ]; then
+    printError "zopen-config did not get refreshed"
+  fi
+  rm -rf $ZOPEN_ROOT/zopen_test
+  cd -
 }
 
 zopen_get_version()
