@@ -60,6 +60,40 @@ i=0; while [ $i -lt $testversions ]; do
 done
 [ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink" ] && fail "Symlinked directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink' was not found, but should not have been an orphan"
 
+echo "Creating multiple dummy package cache entries"
+testpkg="zotsample"
+testversions=5
+i=0; while [ $i -le $testversions ]; do
+  i=$((i + 1))
+  touch "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}${i}.pax.Z"
+done
+
+zopen clean --cache "${testpkg}5"
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}5.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}5.pax.Z still exists"
+[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z still exists"
+
+zopen clean --cache "${testpkg}3" "${testpkg}4"
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}3.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}3.pax.Z still exists"
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}4.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}4.pax.Z still exists"
+[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z still exists"
+
+zopen clean --cache --all
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z still exists"
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}2.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}2.pax.Z still exists"
+
+touch "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z" "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}2.pax.Z" 
+zopen clean --cache --all
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}1.pax.Z still exists"
+[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}2.pax.Z" ] \
+  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/${testpkg}2.pax.Z still exists"
 
 exit 0
 
