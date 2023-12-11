@@ -70,12 +70,17 @@ zopen_init()
 zopen_check()
 {
   WORK_DIR="${ZOPEN_ROOT}/work"
+  INCLUDE_DIR="${ZOPEN_ROOT}/tests/include"
   mkdir -p "${WORK_DIR}"
 
   #
   # Set up environment
   #
   . ${ZOPEN_ROOT}/meta/.env
+
+  # Display banner
+  ${INCLUDE_DIR}/banner.sh "Start Tests"
+
 
   checks=${ZOPEN_ROOT}/tests/zopen_check_*
   echo $checks
@@ -84,7 +89,7 @@ zopen_check()
       && echo "FAIL: ${check} (test script is not executable)" \
       && continue
       echo "Running: ${check}"
-    "${check}" "${WORK_DIR}"
+    "${check}" "${WORK_DIR}" "${INCLUDE_DIR}"
     rc=$?
     if [ ${rc} -gt 0 ]; then
       echo "FAIL: ${check}"
