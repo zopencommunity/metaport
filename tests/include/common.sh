@@ -31,4 +31,3 @@ zopen_print_banner()
 
 }
 
-zopen_print_banner $*

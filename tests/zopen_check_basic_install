@@ -10,6 +10,10 @@ INCLUDEDIR="$2"
 zopen_tool_binary=`whence zopen`
 zopen_tool_directory=$( dirname ${zopen_tool_binary} )
 
+# include helper script
+. "${INCLUDEDIR}/common.sh"
+
+
 echo "Tests starting ..."
 
 zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
@@ -60,7 +64,7 @@ fi
 #
 
 # Display banner
-${INCLUDEDIR}/banner.sh "tests/check_basic_install: malformed package names"
+zopen_print_banner "tests/check_basic_install: malformed package names"
 
 
 echo "-- Current Settings: ---"

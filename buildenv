@@ -10,6 +10,8 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
+
+
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
   if [ -d "${META_DEV_DIR}" ]; then
@@ -78,8 +80,11 @@ zopen_check()
   #
   . ${ZOPEN_ROOT}/meta/.env
 
+  # include helper script
+  . "${INCLUDE_DIR}/common.sh"
+
   # Display banner
-  ${INCLUDE_DIR}/banner.sh "Start Tests"
+  zopen_print_banner "Start Tests"
 
 
   checks=${ZOPEN_ROOT}/tests/zopen_check_*
