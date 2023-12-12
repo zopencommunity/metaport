@@ -61,7 +61,7 @@ done
 [ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink" ] && fail "Symlinked directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink' was not found, but should not have been an orphan"
 
 echo "Creating dummy cache entries"
-cachedir="${ZOPEN_ROOTFS}/var/cache/zopen/"
+cachedir="${ZOPEN_ROOTFS}/var/cache/zopen"
 mkdir -p "${cachedir}"
 testpkgs="zotsample zip bzip2 unzip xz" # need to use 5 real package names
 testversions=5
@@ -77,7 +77,7 @@ cmd="zopen clean --cache xz" && echo "$cmd" && ! $cmd && fail "Failed"
 [ -e "${cachedir}/xz${sfx}" ] \
   && fail "${cachedir}/xz${sfx} still exists"
 [ ! -e "${cachedir}/zotsample${sfx}" ] \
-  && fail "${cachedir}/zotsample${sfx} still exists"
+  && fail "${cachedir}/zotsample${sfx} unexpectedly removed"
 [ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
@@ -87,7 +87,7 @@ cmd="zopen clean --cache bzip2 unzip" && echo "$cmd" && ! $cmd && fail "Failed"
 [ -e "${cachedir}/unzip${sfx}" ] \
   && fail "${cachedir}/unzip${sfx} still exists"
 [ ! -e "${cachedir}/zotsample${sfx}" ] \
-  && fail "${cachedir}/zotsample${sfx} still exists"
+  && fail "${cachedir}/zotsample${sfx} unexpectedly removed"
 [ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
