@@ -6,6 +6,11 @@
 
 fail(){ echo "$@"; exit 8; }
 WORKDIR="$1"
+INCLUDEDIR="$2"
+zopen_tool_binary=`whence zopen`
+zopen_tool_directory=$( dirname ${zopen_tool_binary} )
+
+echo "Tests starting ..."
 
 zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
 [ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
@@ -48,6 +53,37 @@ whichWhich=$(which which)
 if [ ! "${whichWhich}" = "${zopenenv}/usr/local/bin/which" ]; then
   fail "Wrong which was used: expected: '${zopenenv}/usr/local/bin/which'; actual: '${whichWhich}'"
 fi
+
+
+#
+# Test for malformed package names
+#
+
+# Display banner
+${INCLUDEDIR}/banner.sh "tests/check_basic_install: malformed package names"
+
+
+echo "-- Current Settings: ---"
+echo "WORKDIR: ${WORKDIR}"
+echo "zopen_tool_binary: ${zopen_tool_binary}"
+echo "zopen_tool_directory: ${zopen_tool_directory}"
+
+if ! zopen install zotsample -y; then
+    echo "Test of simple install failed."
+    return 4
+fi
+
+result=$(zopen install zotsampleport)
+expected_result="Usage error: please install using base name without port suffix.
+  try: zopen install zotsample"
+if [[ "${result}" != "${expected_result}" ]]; then
+    echo "Test of identifying port suffix failed."
+    return 4
+fi
+
+#
+# Test for upgrade
+#
 
 echo "Running basic upgrade test [zopen upgrade]"
 if ! zopen upgrade; then
