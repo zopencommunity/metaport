@@ -61,68 +61,70 @@ done
 [ -e "${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink" ] && fail "Symlinked directory '${ZOPEN_PKGINSTALL}/${testpkg}/${testpkg}-${testversions}.${testversions}.symlink' was not found, but should not have been an orphan"
 
 echo "Creating dummy cache entries"
+cachedir="${ZOPEN_ROOTFS}/var/cache/zopen/"
+mkdir -p "${cachedir}"
 testpkgs="zotsample zip bzip2 unzip xz" # need to use 5 real package names
 testversions=5
 sfx="-1.2.3.4.pax.Z"
 for pkg in ${testpkgs}; do
- touch "${ZOPEN_ROOTFS}/var/cache/zopen/${pkg}${sfx}"
+ touch "${cachedir}/${pkg}${sfx}"
 done
-touch "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json"
-touch "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp"
-touch "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.current"
+touch "${cachedir}/zopen_releases.json"
+touch "${cachedir}/zopen_releases.timestamp"
+touch "${cachedir}/zopen_releases.current"
 
 cmd="zopen clean --cache xz" && echo "$cmd" && ! $cmd && fail "Failed"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/xz${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/xz${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" ] \
+[ -e "${cachedir}/xz${sfx}" ] \
+  && fail "${cachedir}/xz${sfx} still exists"
+[ ! -e "${cachedir}/zotsample${sfx}" ] \
+  && fail "${cachedir}/zotsample${sfx} still exists"
+[ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
 cmd="zopen clean --cache bzip2 unzip" && echo "$cmd" && ! $cmd && fail "Failed"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/bip2${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/bip2${sfx} still exists"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/unzip${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/unzip${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" ] \
+[ -e "${cachedir}/bip2${sfx}" ] \
+  && fail "${cachedir}/bip2${sfx} still exists"
+[ -e "${cachedir}/unzip${sfx}" ] \
+  && fail "${cachedir}/unzip${sfx} still exists"
+[ ! -e "${cachedir}/zotsample${sfx}" ] \
+  && fail "${cachedir}/zotsample${sfx} still exists"
+[ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
 cmd="zopen clean --cache --all" && echo "$cmd" && ! $cmd && fail "Failed"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx} still exists"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/zip${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zip${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" ] \
+[ -e "${cachedir}/zotsample${sfx}" ] \
+  && fail "${cachedir}/zotsample${sfx} still exists"
+[ -e "${cachedir}/zip${sfx}" ] \
+  && fail "${cachedir}/zip${sfx} still exists"
+[ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
-touch "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx}" "${ZOPEN_ROOTFS}/var/cache/zopen/zip${sfx}" 
+touch "${cachedir}/zotsample${sfx}" "${cachedir}/zip${sfx}" 
 cmd="zopen clean --cache --all" && echo "$cmd" && ! $cmd && fail "Failed"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zotsample${sfx} still exists"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/zip${sfx}" ] \
-  && fail "${ZOPEN_ROOTFS}/var/cache/zopen/zip${sfx} still exists"
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" ] \
+[ -e "${cachedir}/zotsample${sfx}" ] \
+  && fail "${cachedir}/zotsample${sfx} still exists"
+[ -e "${cachedir}/zip${sfx}" ] \
+  && fail "${cachedir}/zip${sfx} still exists"
+[ ! -e "${cachedir}/zopen_releases.json" ] \
   && fail "Metadata file unexpectedly removed"
 
 
-cp --preserve=all "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" "${ZOPEN_ROOTFS}/var/cache/zopen/backup_releases.json"
-cp --preserve=all "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp" "${ZOPEN_ROOTFS}/var/cache/zopen/backup_releases.timestamp"
+cp --preserve=all "${cachedir}/zopen_releases.json" "${cachedir}/backup_releases.json"
+cp --preserve=all "${cachedir}/zopen_releases.timestamp" "${cachedir}/backup_releases.timestamp"
 sleep 2  # Allow time to pass to change the timestamps
 cmd="zopen clean --metadata" && echo "$cmd" && ! $cmd  && fail "Failed"
-[ -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.current" ] \
+[ -e "${cachedir}/zopen_releases.current" ] \
   && fail "Metadata file not removed"  # This file is removed completely
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" ] \
-  && fail "Updated cache file not created: ${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json"
+[ ! -e "${cachedir}/zopen_releases.json" ] \
+  && fail "Updated cache file not created: ${cachedir}/zopen_releases.json"
 # shellcheck disable=SC3013 # z/OS sh & bash support -nt
-[ ! "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json" -nt "${ZOPEN_ROOTFS}/var/cache/zopen/backup_releases.json" ] \
-  && fail "Metadata file '"${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.json"' not updated"
+[ ! "${cachedir}/zopen_releases.json" -nt "${cachedir}/backup_releases.json" ] \
+  && fail "Metadata file '"${cachedir}/zopen_releases.json"' not updated"
 
-[ ! -e "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp" ] \
-  && fail "Updated cache file not created: ${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp"
+[ ! -e "${cachedir}/zopen_releases.timestamp" ] \
+  && fail "Updated cache file not created: ${cachedir}/zopen_releases.timestamp"
 # shellcheck disable=SC3013 # z/OS sh & bash support -nt
-[ ! "${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp" -nt "${ZOPEN_ROOTFS}/var/cache/zopen/backup_releases.timestamp" ] \
-  && fail "Metadata file '"${ZOPEN_ROOTFS}/var/cache/zopen/zopen_releases.timestamp"'not updated"
+[ ! "${cachedir}/zopen_releases.timestamp" -nt "${cachedir}/backup_releases.timestamp" ] \
+  && fail "Metadata file '${cachedir}/zopen_releases.timestamp' not updated"
 exit 0
 
