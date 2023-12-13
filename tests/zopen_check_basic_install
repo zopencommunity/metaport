@@ -73,16 +73,16 @@ echo "zopen_tool_binary: ${zopen_tool_binary}"
 echo "zopen_tool_directory: ${zopen_tool_directory}"
 
 if ! zopen install zotsample -y; then
-    echo "Test of simple install failed."
-    return 4
+    fail "Test of simple install failed."
 fi
 
-result=$(zopen install zotsampleport)
-expected_result="Usage error: please install using base name without port suffix.
-  try: zopen install zotsample"
+result=$(zopen install zotsampleport 2>&1 >/dev/null)
+expected_result="- Querying repo for latest package information.
+***ERROR: The following requested port(s) do not exist:
+	 zotsampleport
+***ERROR: Check port name(s), remove any port suffixes and retry command."
 if [[ "${result}" != "${expected_result}" ]]; then
-    echo "Test of identifying port suffix failed."
-    return 4
+    fail "Test of identifying port suffix failed."
 fi
 
 #
