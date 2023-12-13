@@ -55,7 +55,7 @@ if ! zopen upgrade; then
 fi
 
 echo "Testing removal [zopen remove which]"
-if ! zopen remove which; then
+if ! zopen remove -y which; then
   fail "Error during removal of the 'which' package"
 fi
 if "${zopenenv}/usr/local/bin/which" which; then
@@ -70,7 +70,7 @@ if [ -n "${installedOk}" ]; then
 fi
 
 echo "Testing removal of already removed / not installed package [zopen remove which]"
-if ! zopen remove which; then
+if ! zopen remove -y which; then
   # Note that zopen remove of a non-installed package is not in itself an 
   # error as it is reporting correctly (that it can't install something that
   # is not installed)
@@ -117,6 +117,15 @@ echo "Test odd versioning [zopen install -y =1.2.3.4]"
 if zopen install -y =1.2.3.4; then
   fail "Install of versioned package with no package name did not fail"
 fi
+
+cmd="zopen install -y zip unzip bzip2 xz"
+echo "Installing multiple packages [$cmd]"
+! $cmd && fail "Failed to install multiple packages"
+
+cmd="zopen remove -y xz bzip2 unzip zip"
+echo "Removing multiple packages [$cmd]"
+! $cmd && fail "Command failed to remove multiple packages"
+
 
 [ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
 exit 0
