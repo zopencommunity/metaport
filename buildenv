@@ -10,6 +10,8 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
+
+
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
   if [ -d "${META_DEV_DIR}" ]; then
@@ -70,12 +72,20 @@ zopen_init()
 zopen_check()
 {
   WORK_DIR="${ZOPEN_ROOT}/work"
+  INCLUDE_DIR="${ZOPEN_ROOT}/tests/include"
   mkdir -p "${WORK_DIR}"
 
   #
   # Set up environment
   #
   . ${ZOPEN_ROOT}/meta/.env
+
+  # include helper script
+  . "${INCLUDE_DIR}/common.sh"
+
+  # Display banner
+  zopen_print_banner "Start Tests"
+
 
   checks=${ZOPEN_ROOT}/tests/zopen_check_*
   echo $checks
@@ -84,7 +94,7 @@ zopen_check()
       && echo "FAIL: ${check} (test script is not executable)" \
       && continue
       echo "Running: ${check}"
-    "${check}" "${WORK_DIR}"
+    "${check}" "${WORK_DIR}" "${INCLUDE_DIR}"
     rc=$?
     if [ ${rc} -gt 0 ]; then
       echo "FAIL: ${check}"

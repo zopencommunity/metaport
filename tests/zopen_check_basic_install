@@ -6,6 +6,15 @@
 
 fail(){ echo "$@"; exit 8; }
 WORKDIR="$1"
+INCLUDEDIR="$2"
+zopen_tool_binary=`whence zopen`
+zopen_tool_directory=$( dirname ${zopen_tool_binary} )
+
+# include helper script
+. "${INCLUDEDIR}/common.sh"
+
+
+echo "Tests starting ..."
 
 zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
 [ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
@@ -48,6 +57,37 @@ whichWhich=$(which which)
 if [ ! "${whichWhich}" = "${zopenenv}/usr/local/bin/which" ]; then
   fail "Wrong which was used: expected: '${zopenenv}/usr/local/bin/which'; actual: '${whichWhich}'"
 fi
+
+
+#
+# Test for malformed package names
+#
+
+# Display banner
+zopen_print_banner "tests/check_basic_install: malformed package names"
+
+
+echo "-- Current Settings: ---"
+echo "WORKDIR: ${WORKDIR}"
+echo "zopen_tool_binary: ${zopen_tool_binary}"
+echo "zopen_tool_directory: ${zopen_tool_directory}"
+
+if ! zopen install zotsample -y; then
+    fail "Test of simple install failed."
+fi
+
+result=$(zopen install zotsampleport 2>&1 >/dev/null)
+expected_result="- Querying repo for latest package information.
+***ERROR: The following requested port(s) do not exist:
+	 zotsampleport
+***ERROR: Check port name(s), remove any port suffixes and retry command."
+if [[ "${result}" != "${expected_result}" ]]; then
+    fail "Test of identifying port suffix failed."
+fi
+
+#
+# Test for upgrade
+#
 
 echo "Running basic upgrade test [zopen upgrade]"
 if ! zopen upgrade; then
