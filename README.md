@@ -1,4 +1,4 @@
-![Automatic version updates](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml/badge.svg)](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml)
+[![Automatic version updates](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml/badge.svg)](https://github.com/ZOSOpenTools/metaport/actions/workflows/bump.yml)
 
 metaport
 
