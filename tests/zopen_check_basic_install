@@ -158,11 +158,11 @@ if zopen install -y =1.2.3.4; then
   fail "Install of versioned package with no package name did not fail"
 fi
 
-cmd="zopen install -y zip unzip bzip2 xz"
+cmd="zopen install -y zip unzip tar xz"
 echo "Installing multiple packages [$cmd]"
 ! $cmd && fail "Failed to install multiple packages"
 
-cmd="zopen remove -y xz bzip2 unzip zip"
+cmd="zopen remove -y xz tar unzip zip"
 echo "Removing multiple packages [$cmd]"
 ! $cmd && fail "Command failed to remove multiple packages"
 
