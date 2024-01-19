@@ -148,9 +148,9 @@ if zopen install -y which=1.2.3.4.5; then
   fail "Attempt to install non-existent version of package did not fail"
 fi
 
-echo "Test versioned package [zopen install -y which=2.21.20230328_102133]"
-if ! zopen install -y which=2.21.20230328_102133; then
-  fail "Install of known available version (which 2.21.20230328_102133) failed"
+echo "Test versioned package [zopen install -y which=2.21.20231116_102257]"
+if ! zopen install -y which=2.21.20231116_102257; then
+  fail "Install of known available version (which 2.21.20231116_102257) failed"
 fi
 
 echo "Test odd versioning [zopen install -y =1.2.3.4]"
