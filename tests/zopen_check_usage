@@ -14,8 +14,6 @@ MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
 
 zopen_save_and_clear
 
-export ZOPEN_BETA_FEATURES=1 # This is a beta feature
-
 zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
 [ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
 
@@ -32,8 +30,8 @@ zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
 
 . ${zopenenv}/etc/zopen-config
 
-jsonFilePath="${zopenenv}/etc/zopen/analytics.json"
-[ ! -e "${zopenenv}/etc/zopen/analytics.json" ] && echo "Analytics json is not available" && exit 8
+jsonFilePath="${zopenenv}/var/lib/zopen/analytics.json"
+[ ! -e "$jsonFilePath" ] && echo "Analytics json $jsonFilePath is not available" && exit 8
 
 profile=$(jq -r '.profile' "$jsonFilePath")
 if [ -z "$profile" ]; then
