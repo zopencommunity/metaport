@@ -7,9 +7,7 @@ export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep gro
 
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
-export ZOPEN_CHECK="skip" # temporary
-
-#export ZOPEN_CHECK="zopen_check"
+export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
 
