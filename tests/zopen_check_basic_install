@@ -36,7 +36,7 @@ echo "Testing source of configuration file"
 
 echo "Testing the zopen version is set correctly (according to zopen-config)"
 zopen_binary=$(whence zopen)
-[ ! "${zopen_binary}" = "${zopenenv}/usr/local/bin/zopen" ] && echo "Incorrectly sourced zopen-config" && exit 8
+[ ! "${zopen_binary}" = "${zopenenv}/usr/local/bin/zopen" ] && echo "Incorrectly sourced zopen-config. ${zopen_binary} != ${zopenenv}/usr/local/bin/zopen" && exit 8
 
 echo "Hardcoding test meta into PATH"
 # Hac..fix to ensure we use the test meta
