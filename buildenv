@@ -154,7 +154,6 @@ ZZ
 
 zopen_pre_terminate() {
   # Test setup of meta
-  set -e
   rm -rf $ZOPEN_ROOT/zopen_test
   cd $ZOPEN_INSTALL_DIR
   unset ZOPEN_ROOTFS
