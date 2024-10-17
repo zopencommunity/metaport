@@ -1,9 +1,10 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.2"
+META_VERSION="0.8.3"
 
 export ZOPEN_BUILD_LINE="DEV"
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
+export ZOPEN_COMP=SKIP
 
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
