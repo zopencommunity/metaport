@@ -2,6 +2,7 @@
 META_VERSION="0.8.3"
 
 export ZOPEN_BUILD_LINE="DEV"
+export ZOPEN_CATEGORIES="utilities"
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
 export ZOPEN_COMP=SKIP
