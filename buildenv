@@ -1,5 +1,5 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.3"
+META_VERSION="0.8.4"
 
 export ZOPEN_BUILD_LINE="DEV"
 export ZOPEN_CATEGORIES="utilities"
@@ -10,7 +10,7 @@ export ZOPEN_COMP=SKIP
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
-export ZOPEN_INSTALL="zopen_install"
+export ZOPEN_INSTALL="skip"
 
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
@@ -30,10 +30,6 @@ else
 
   # Set up our own 'meta' to use from our dev code and skip install
   basename=$(basename "${ZOPEN_META_DEV_ROOT}")
-  if [ "x${basename}" != "xmeta" ]; then
-    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
-    exit 8
-  fi
 
   if [ -d "${META_DEV_DIR}" ]; then
     if ! [ -L "${META_DEV_DIR}" ]; then
