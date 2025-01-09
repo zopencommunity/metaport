@@ -76,7 +76,7 @@ if ! zopen install zotsample -y; then
     fail "Test of simple install failed."
 fi
 
-result=$(zopen install zotsampleport 2>&1 >/dev/null)
+result=$(zopen install zotsampleport 2>&1)
 expected_result="- Querying repo for latest package information.
 ***ERROR: The following requested port(s) do not exist:
 	 zotsampleport
