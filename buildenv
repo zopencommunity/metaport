@@ -10,7 +10,7 @@ export ZOPEN_COMP=SKIP
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
-export ZOPEN_INSTALL="skip"
+export ZOPEN_INSTALL="zopen_install"
 
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
