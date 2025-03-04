@@ -5,66 +5,56 @@ export ZOPEN_BUILD_LINE="DEV"
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
 
+export ZOPEN_RUNTIME_DEPS="gpg jq curl"
+
 export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
+export ZOPEN_META_DEV_ROOT="" # Set to test zopen directory if not testing system default
+
+handle_error() {
+  echo "$1" >&2
+  exit 8
+}
+
 META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
-  if [ -d "${META_DEV_DIR}" ]; then
-    if [ -L "${META_DEV_DIR}" ]; then
-      echo "ZOPEN_META_DEV_ROOT is NOT set, but ${META_DEV_DIR} is a symbolic link. Either set ZOPEN_META_DEV_ROOT or remove the symbolic link"
-      exit 8
-    fi
+  echo "Ensuring no problematic symbolic links from earlier runs"
+  if [ -d "${META_DEV_DIR}" ] && [ -L "${META_DEV_DIR}" ]; then
+    handle_error "Error: ${META_DEV_DIR} is a symbolic link. Remove the link or set ZOPEN_META_DEV_ROOT."
   fi
 else
-  echo "Installation will not be performed - testing dev environment"
+  echo "Installation will not be performed - testing existing dev environment"
 
-  if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
-    echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
-    exit 8
-  fi
+  printVerbose "Validate custom meta directory"
+  [ -d "${ZOPEN_META_DEV_ROOT}" ] || handle_error "Error: ZOPEN_META_DEV_ROOT does not exist: ${ZOPEN_META_DEV_ROOT}"
+  [ "$(basename "${ZOPEN_META_DEV_ROOT}")" = "meta" ] || handle_error "Error: ZOPEN_META_DEV_ROOT must point to a 'meta' directory"
 
-  # Set up our own 'meta' to use from our dev code and skip install
-  basename=$(basename "${ZOPEN_META_DEV_ROOT}")
-  if [ "x${basename}" != "xmeta" ]; then
-    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
-    exit 8
-  fi
-
+  echo "Clean up existing meta directory"
   if [ -d "${META_DEV_DIR}" ]; then
-    if ! [ -L "${META_DEV_DIR}" ]; then
-      # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
+    if [ ! -L "${META_DEV_DIR}" ]; then
+      echo "Moving/archiving existing non-link directory"
       mv "${META_DEV_DIR}" "${META_DEV_DIR}-cloned"
     else
-      # There may already be a symbolic link here - if so, delete it in case it is stale
+      echo "Removing existing symbolic link"
       rm "${META_DEV_DIR}"
     fi
-  else
-    # Directory has not yet been cloned - just have symbolic link created (next)
-    :
   fi
-      
-  if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" ; then
-    echo "Unable to create symbolic from ${META_DEV_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
-    exit 8
-  fi
+
+  echo "Creating symbolic link to development root"
+  ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" || handle_error "Unable to create symbolic link"
 fi
 
 zopen_init()
 {
   export PATH="$PWD/bin:$PATH"
-
-  myzopen=$( whence zopen )
-  if [ $? -gt 0 ]; then
-    echo "Error - unable to find zopen in the PATH" >&2
-    return 8
+  
+  if ! myzopen=$( whence zopen ); then
+    handle_error "Error - unable to find zopen in the PATH"
   fi
-  if [ "${myzopen}" != "${PWD}/bin/zopen" ]; then
-    echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
-    return 8
-  fi
+  [ "${myzopen}" == "${PWD}/bin/zopen" ] || handle_error "Error - unable to find local zopen at ${PWD}/bin/zopen"
 }
 
 zopen_check()
@@ -76,17 +66,19 @@ zopen_check()
   #
   # Set up environment
   #
-  . ${ZOPEN_ROOT}/meta/.env
+  # shellcheck disable=SC1091
+  . "${ZOPEN_ROOT}"/meta/.env
 
   # include helper script
+  # shellcheck disable=SC1091
   . "${INCLUDE_DIR}/common.sh"
 
   # Display banner
   zopen_print_banner "Start Tests"
 
 
-  checks=${ZOPEN_ROOT}/tests/zopen_check_*
-  echo $checks
+  checks="${ZOPEN_ROOT}"/tests/zopen_check_*
+  echo "Found checks: ${checks}"
   for check in $checks ; do
     [ ! -x "${check}" ] \
       && echo "FAIL: ${check} (test script is not executable)" \
@@ -109,8 +101,8 @@ zopen_check_results()
   pfx="$2"
   chk="$1/$2_check.log"
 
-  pass=$( cat "${chk}" | grep -E '^PASS: ' | wc -l)
-  fail=$( cat "${chk}" | grep -E '^FAIL: ' | wc -l)
+  pass=$( grep -E '^PASS: ' "${chk}" | wc -l)
+  fail=$( grep -E '^FAIL: ' "${chk}"| wc -l)
   echo "actualFailures:$fail"
   echo "totalTests:$(( pass+fail ))"
   echo "expectedFailures:0"
@@ -121,21 +113,20 @@ zopen_install()
   set -e
   perlver=$(perl --version | head -2 | tail -1 | awk ' { print $4 }' | tr -d ',')
   perlrel=$(perl --version | head -2 | tail -1 | awk ' { print $6 }' | tr -d ',')
-  if [ $perlver -lt 5 ] || [ $perlrel -lt 38 ]; then
-    echo "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
-    return 8
+  if [ "$perlver" -lt 5 ] || [ "$perlrel" -lt 38 ]; then
+    handle_error "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
   fi
   mkdir -p "$ZOPEN_INSTALL_DIR"
   if [ -z "$ZOPEN_META_DEV_ROOT" ]; then
     rm -rvf "$PWD/zotsampleport"
     rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   fi
-  cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
+  cp -rv "$PWD"/* "$ZOPEN_INSTALL_DIR"/
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
   mkdir -p "$ZOPEN_INSTALL_DIR/ref"
   echo "HTML reference pages will be written to $ZOPEN_INSTALL_DIR/ref"
-  for man in $ZOPEN_INSTALL_DIR/man/man1/*.1; do
+  for man in "$ZOPEN_INSTALL_DIR"/man/man1/*.1; do
     base=${man##*/}
     name=${base%%.1}
     html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
@@ -154,17 +145,20 @@ ZZ
 
 zopen_pre_terminate() {
   # Test setup of meta
-  rm -rf $ZOPEN_ROOT/zopen_test
-  cd $ZOPEN_INSTALL_DIR
+  rm -rf "$ZOPEN_ROOT"/zopen_test
+  cd "$ZOPEN_INSTALL_DIR"
   unset ZOPEN_ROOTFS
   rm -f .installed 
+  # shellcheck disable=SC1091
   . ./.env
-  zopen init -y $ZOPEN_ROOT/zopen_test
-  . $ZOPEN_ROOT/zopen_test/etc/zopen-config
+  zopen init -y "$ZOPEN_ROOT"/zopen_test
+  # shellcheck disable=SC1091
+  . "$ZOPEN_ROOT"/zopen_test/etc/zopen-config
   rm -rf .installed
 
   # Test refresh on an existing install
   timestamp1=$(stat -c %Y "$ZOPEN_ROOT/zopen_test/etc/zopen-config")
+  # shellcheck disable=SC1091
   . ./.env # runs setup.sh which should now refresh the zopen-config
   timestamp2=$(stat -c %Y "$ZOPEN_ROOT/zopen_test/etc/zopen-config")
   
@@ -172,7 +166,7 @@ zopen_pre_terminate() {
   if [ "$timestamp1" -ge "$timestamp2" ]; then
     printError "zopen-config did not get refreshed"
   fi
-  rm -rf $ZOPEN_ROOT/zopen_test
+  rm -rf "$ZOPEN_ROOT"/zopen_test
   cd -
 }
 
