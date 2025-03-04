@@ -1,0 +1,189 @@
+#!/bin/sh
+
+#
+# Basic install of zopen
+#
+
+fail(){ echo "$@"; exit 8; }
+WORKDIR="$1"
+INCLUDEDIR="$2"
+zopen_tool_binary=$(type zopen | cut -d' ' -f3)
+zopen_tool_directory=$( dirname "${zopen_tool_binary}" )
+
+# include helper script
+# shellcheck disable=SC1091
+. "${INCLUDEDIR}/common.sh"
+
+
+echo "Tests starting ..."
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+mkdir -p "${zopenenv}"
+zopen init -y --re-init "${zopenenv}"  #specify re-init to ensure an env
+echo "Rc=$?"
+
+echo "Testing if zopen was installed at: ${zopenenv}/usr/local/zopen"
+[ ! -e "${zopenenv}/usr/local/zopen" ] && echo "File system not available" && exit 8
+echo "Testing source of the zopen-config file"
+[ ! -e "${zopenenv}/etc/zopen-config" ] && echo "zopen configuration not available" && exit 8
+
+echo "Testing source of configuration file"
+# shellcheck disable=SC1091
+. "${zopenenv}/etc/zopen-config"
+[ -z "${ZOPEN_ROOTFS}" ] && echo "zopen required envvar ZOPEN_ROOTFS not set" && exit 8
+
+echo "Testing the zopen version is set correctly (according to zopen-config)"
+zopen_binary=$(whence zopen)
+[ ! "${zopen_binary}" = "${zopenenv}/usr/local/bin/zopen" ] && echo "Incorrectly sourced zopen-config. ${zopen_binary} != ${zopenenv}/usr/local/bin/zopen" && exit 8
+
+echo "Hardcoding test meta into PATH"
+# Fix to ensure we use the test meta
+export PATH="$(dirname "${zopen_tool_binary}"):${PATH}"
+zopen_binary=$(whence zopen)
+
+[ ! "${zopen_binary}" = "${zopen_tool_binary}" ] && echo "Could not reset to use test meta" && exit 8
+
+zopen list --installed
+
+echo "Installing small 'test' packages [to grab pax files from cache]"
+installPkgs=" xz which bzip wget"
+# shellcheck disable=SC2086
+if ! zopen install -y ${installPkgs}; then
+  fail "Error installing test packages"
+fi
+
+echo "Testing functionality of which"
+whichWhich=$(which which)
+if [ ! "${whichWhich}" = "${zopenenv}/usr/local/bin/which" ]; then
+  fail "Wrong which was used: expected: '${zopenenv}/usr/local/bin/which'; actual: '${whichWhich}'"
+fi
+
+tstpkgcache="${zopenenv}/tstpkgcache"
+[ -e "${tstpkgcache}" ] && rm -rf "${tstpkgcache}"
+mkdir -p "${tstpkgcache}" || fail "Could not create directory '${tstpkgcache}'"
+cp "${zopenenv}/var/cache/zopen/xz*.Z" "${tstpkgcache}"
+cp "${zopenenv}/var/cache/zopen/which*.Z" "${tstpkgcache}"
+cp "${zopenenv}/var/cache/zopen/bzip*.Z" "${tstpkgcache}"
+cp "${zopenenv}/var/cache/zopen/wget*.Z" "${tstpkgcache}"
+
+echo "Removing all trace of installed test packages"
+zopen remove --purge xz which bzip wget
+
+echo "Setting up vars for use as filenames"
+# Automagically populate envvars that are the package names with the appropriate
+# file, noting that this allows for dynamic names, not hardcoding specific versions
+for file in "$tstpkgcache"/*; do
+  basefile=$(basename "$file")
+  # Extract the prefix (everything before the last hyphen), in uppercase with no - or _
+  prefix=$("$basefile" | sed 's/\(.*\)-[^-]*$/\1/' | tr 'a-z' 'A-Z' | sed 's/[-_]//g')
+  # Assign the filename to the generated variable name
+  eval "$prefix=\"$file\""
+  echo "$prefix=$file"
+done
+
+# Display banner
+zopen_print_banner "tests/$0: "
+
+
+echo "-- Current Settings: ---"
+echo "WORKDIR: ${WORKDIR}"
+echo "zopen_tool_binary: ${zopen_tool_binary}"
+echo "zopen_tool_directory: ${zopen_tool_directory}"
+
+echo "Testing install from current directory"
+cd "${tstpkgcache}" || fail "Cannot change to test cache directory"
+if ! zopen install "${XZ}" -y; then
+  fail "Test to install package '${XZ}' failed"
+fi
+cd - || fail "Could not return to previous directory?!?"
+which=$(which xz)
+if [ ! "${which}" = "${zopenenv}/usr/local/bin/xz" ]; then
+  fail "xz was not found at the expected location: expected: '${zopenenv}/usr/local/bin/xz'; actual: '${which}'"
+fi
+
+
+echo "Testing install from relative directory"
+cd "${tstpkgcache}/.." || fail "Cannot change to test cache directory"
+if ! zopen install "tstpkgcache/${BZIP}" -y; then
+  fail "Relative Test to install package '${BZIP}' failed"
+fi
+cd - || fail "Could not return to previous directory?!?"
+which=$(which bzip2)
+if [ ! "${which}" = "${zopenenv}/usr/local/bin/bzip2" ]; then
+  fail "bzip2 was not found at the expected location: expected: '${zopenenv}/usr/local/bin/bzip2'; actual: '${which}'"
+fi
+
+
+echo "Testing install from absolute directory"
+if ! zopen install "${tstpkgcache}/${WGET}" -y; then
+  fail "Relative Test to install package '${WGET}' failed"
+fi
+
+which=$(which wget)
+if [ ! "${which}" = "${zopenenv}/usr/local/bin/wget" ]; then
+  fail "wget was not found at the expected location: expected: '${zopenenv}/usr/local/bin/wget'; actual: '${which}'"
+fi
+
+echo "Testing caveat output"
+
+echo "Testing install from absolute directory"
+if ! promptersOut=$(zopen install prompters -y); then
+  fail "Installation of prompters package failed"
+fi
+
+if ! echo "${promptersOut}" | grep -q "Installation Caveats"; then
+  fail "Could not locate Caveat output from prompters"
+fi
+
+echo "Testing database generation"
+packageDB="${zopenenv}/var/lib/zopen/packageDB.json"
+[ -e "${packageDB}" ] && rm "${packageDB}"
+if ! listout=$(zopen list --installed); then
+  fail "List package command unexpectedly failed.\n${listout}"
+fi
+if ! echo "${listout}" | grep -q "WARNING: No package database found. Regenerating (subsequent calls will be faster)"; then
+  fail "No message indicating package database was being updated.\n${listout}"
+fi
+if [ ! -e "${packageDB}" ]; then
+  fail "Install package database not found/created"
+fi
+
+echo "Testing list of installed packages"
+installedPkgs=$(echo "$installPkgs prompters" | tr ' ' '\n')
+if ! listout=$(zopen list --installed); then
+  fail "Could not obtain list of installed packages.\n${listout}"
+fi
+
+commTmpdir="${WORKDIR}/tmp/comm"
+[ -e "${commTmpdir}" ] && rm -rf "${commTmpdir}"
+mkdir -p "${commTmpdir}"
+# shellcheck disable=SC3037 # Works on z/OS
+echo -e "$installedPkgs" | sort > "${commTmpdir}/ip.txt"
+# shellcheck disable=SC3037 # Works on z/OS
+echo -e "$listout" | sort > "${commTmpdir}/lo.txt"
+if ! commOut=$(comm -3 "${commTmpdir}/ip.txt" "${commTmpdir}/lo.txt"); then
+  fail "Error trying to compare input/output in files '${commTmpdir}/ip.txt' '${commTmpdir}/lo.txt'.\n${commOut}"
+fi
+[ -e  "${commTmpdir}/ip.txt" ] && rm "${commTmpdir}/ip.txt"
+[ -e "${commTmpdir}/lo.txt" ] && rm "${commTmpdir}/lo.txt"
+
+
+echo "Testing removal of dependent package"
+if groffRemove=$(echo "n" | zopen remove grof); then
+  fail "Removal of groff package succeeded; should fail as a dependent of prompters"
+fi
+
+if ! echo "${groffRemove}" | grep -q "WARNING: Removing groff could result in broken packages"; then
+  fail "Could not locate Caveat output from prompters"
+fi
+
+if ! groffRemove=$(echo "y" | zopen remove grof); then
+  fail "Removal of groff package failed; should fail as a dependent of prompters"
+fi
+
+# Cleanup
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+exit 0
+
