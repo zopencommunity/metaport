@@ -21,6 +21,8 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
+export ZOPEN_META_DEV_ROOT="" # Set to test zopen directory if not testing system default
+
 META_DEV_DIR="$(pwd -P)/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
   if [ -d "${META_DEV_DIR}" ]; then
@@ -32,20 +34,13 @@ if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
     echo "Using meta installation from '${META_DEV_DIR}'"
   fi
 else
-  echo "Installation will not be performed - testing dev environment"
+  echo "Installation will not be performed - testing existing dev environment"
 
-  if ! [ -d "${ZOPEN_META_DEV_ROOT}" ] ; then
-    echo "ZOPEN_META_DEV_ROOT points to ${ZOPEN_META_DEV_ROOT}, but the directory does not exist" >&2
-    exit 8
-  fi
+  printVerbose "Validate custom meta directory"
+  [ -d "${ZOPEN_META_DEV_ROOT}" ] || handle_error "Error: ZOPEN_META_DEV_ROOT does not exist: ${ZOPEN_META_DEV_ROOT}"
+  [ "$(basename "${ZOPEN_META_DEV_ROOT}")" = "meta" ] || handle_error "Error: ZOPEN_META_DEV_ROOT must point to a 'meta' directory"
 
-  # Set up our own 'meta' to use from our dev code and skip install
-  basename=$(basename "${ZOPEN_META_DEV_ROOT}")
-  if [ "x${basename}" != "xmeta" ]; then
-    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
-    exit 8
-  fi
-
+  echo "Clean up existing meta directory"
   if [ -d "${META_DEV_DIR}" ]; then
     if ! [ -L "${META_DEV_DIR}" ]; then
       # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
@@ -66,7 +61,6 @@ else
     echo "Unable to create symbolic from ${META_DEV_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
     exit 8
   fi
-fi
 
 zopen_post_buildenv()
 {
@@ -79,16 +73,11 @@ zopen_post_buildenv()
 zopen_init()
 {
   export PATH="$PWD/bin:$PATH"
-
-  myzopen=$( whence zopen )
-  if [ $? -gt 0 ]; then
-    echo "Error - unable to find zopen in the PATH" >&2
-    return 8
+  
+  if ! myzopen=$( whence zopen ); then
+    handle_error "Error - unable to find zopen in the PATH"
   fi
-  if [ "${myzopen}" != "${PWD}/bin/zopen" ]; then
-    echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
-    return 8
-  fi
+  [ "${myzopen}" == "${PWD}/bin/zopen" ] || handle_error "Error - unable to find local zopen at ${PWD}/bin/zopen"
 }
 
 zopen_check()
@@ -111,9 +100,8 @@ zopen_check()
   zopen_print_banner "Start Tests"
 
 
-  # shellcheck disable=SC2125  # We want globbing
   checks=${ZOPEN_ROOT}/tests/zopen_check_*
-  echo $checks
+  echo "Found checks: ${checks}"
   for check in $checks ; do
     [ ! -x "${check}" ] \
       && echo "FAIL: ${check} (test script is not executable)" \
@@ -134,8 +122,8 @@ zopen_check_results()
 {
   chk="$1/$2_check.log"
 
-  pass=$( cat "${chk}" | grep -E '^PASS: ' | wc -l)
-  fail=$( cat "${chk}" | grep -E '^FAIL: ' | wc -l)
+  pass=$( grep -E '^PASS: ' "${chk}" | wc -l)
+  fail=$( grep -E '^FAIL: ' "${chk}"| wc -l)
   echo "actualFailures:$fail"
   echo "totalTests:$(( pass+fail ))"
   echo "expectedFailures:0"
@@ -146,21 +134,20 @@ zopen_install()
   set -e
   perlver=$(perl --version | head -2 | tail -1 | awk ' { print $4 }' | tr -d ',')
   perlrel=$(perl --version | head -2 | tail -1 | awk ' { print $6 }' | tr -d ',')
-  if [ $perlver -lt 5 ] || [ $perlrel -lt 38 ]; then
-    echo "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
-    return 8
+  if [ "$perlver" -lt 5 ] || [ "$perlrel" -lt 38 ]; then
+    handle_error "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
   fi
   mkdir -p "$ZOPEN_INSTALL_DIR"
   if [ -z "$ZOPEN_META_DEV_ROOT" ]; then
     rm -rvf "$PWD/zotsampleport"
     rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   fi
-  cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
+  cp -rv "$PWD"/* "$ZOPEN_INSTALL_DIR"/
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
   mkdir -p "$ZOPEN_INSTALL_DIR/ref"
   echo "HTML reference pages will be written to $ZOPEN_INSTALL_DIR/ref"
-  for man in $ZOPEN_INSTALL_DIR/man/man1/*.1; do
+  for man in "$ZOPEN_INSTALL_DIR"/man/man1/*.1; do
     base=${man##*/}
     name=${base%%.1}
     html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
