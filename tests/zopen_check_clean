@@ -114,9 +114,13 @@ cp --preserve=all "${cachedir}/zopen_releases.timestamp" "${cachedir}/backup_rel
 sleep 2  # Allow time to pass to change the timestamps
 cmd="zopen clean --metadata" && echo "$cmd" && ! $cmd  && fail "Failed"
 [ -e "${cachedir}/zopen_releases.current" ] \
-  && fail "Metadata file not removed"  # This file is removed completely
-[ ! -e "${cachedir}/zopen_releases.json" ] \
-  && fail "Updated cache file not created: ${cachedir}/zopen_releases.json"
+  && fail "Metadata file '${cachedir}/zopen_releases.current' not removed"  # This file is removed completely
+[ -e "${cachedir}/zopen_releases.json" ] \
+  && fail "Cache file '${cachedir}/zopen_releases.json' not removed" # This file is removed completely
+
+echo "Triggering recreate of metadata - zopen clean does not regenerate this as it cleans!"
+cmd="zopen install --reinstall zotsample -y" && echo "$cmd" && ! $cmd && fail "Failed"
+
 # shellcheck disable=SC3013 # z/OS sh & bash support -nt
 [ ! "${cachedir}/zopen_releases.json" -nt "${cachedir}/backup_releases.json" ] \
   && fail "Metadata file '"${cachedir}/zopen_releases.json"' not updated"

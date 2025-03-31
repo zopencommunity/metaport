@@ -1,6 +1,10 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
 META_VERSION="0.8.4"
 
+# To test a development environment, set the following to the absolute path of the
+# 'meta' directory either in the script or in the environment
+#export ZOPEN_META_DEV_ROOT=""
+
 export ZOPEN_BUILD_LINE="DEV"
 export ZOPEN_CATEGORIES="utilities"
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
@@ -12,13 +16,15 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
-META_DEV_DIR="${PWD}/meta"
+META_DEV_DIR="$(pwd -P)/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
   if [ -d "${META_DEV_DIR}" ]; then
     if [ -L "${META_DEV_DIR}" ]; then
       echo "ZOPEN_META_DEV_ROOT is NOT set, but ${META_DEV_DIR} is a symbolic link. Either set ZOPEN_META_DEV_ROOT or remove the symbolic link"
       exit 8
     fi
+  else
+    echo "Using meta installation from '${META_DEV_DIR}'"
   fi
 else
   echo "Installation will not be performed - testing dev environment"
@@ -30,13 +36,20 @@ else
 
   # Set up our own 'meta' to use from our dev code and skip install
   basename=$(basename "${ZOPEN_META_DEV_ROOT}")
+  if [ "x${basename}" != "xmeta" ]; then
+    echo "ZOPEN_META_DEV_ROOT should point to a 'meta' cloned directory. It is: ${ZOPEN_META_DEV_ROOT}" >&2
+    exit 8
+  fi
 
   if [ -d "${META_DEV_DIR}" ]; then
     if ! [ -L "${META_DEV_DIR}" ]; then
       # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
-      mv "${META_DEV_DIR}" "${META_DEV_DIR}-cloned"
+      backup_dir="${META_DEV_DIR}-cloned.$(date +%Y%m%d%H%M%S)"
+      echo "Backing up old directory '${META_DEV_DIR}' to '${backup_dir}'"
+      mv "${META_DEV_DIR}" "${backup_dir}"
     else
       # There may already be a symbolic link here - if so, delete it in case it is stale
+      echo "Removing existing symlink at '${META_DEV_DIR}'"
       rm "${META_DEV_DIR}"
     fi
   else
