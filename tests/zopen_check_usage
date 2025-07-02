@@ -1,0 +1,76 @@
+#!/bin/env bash
+
+#
+# Check usage statistics
+#
+
+fail(){ echo "$@"; exit 8; }
+WORKDIR="$1"
+
+ME=$(basename $0)
+MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
+
+. "${MYDIR}/include/zopen_check_services"
+
+zopen_save_and_clear
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+mkdir -p "${zopenenv}"
+
+export PATH="${MYDIR}/../meta/bin:${PATH}:${ZOPEN_OLD_PATH_SAVE}"
+export ZOPEN_CA="$ZOPEN_CA_SAVE"
+export ZOPEN_ROOTFS="$ZOPEN_ROOTFS_SAVE"
+export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
+export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
+export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
+
+zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
+
+. ${zopenenv}/etc/zopen-config
+
+jsonFilePath="${zopenenv}/var/lib/zopen/analytics.json"
+[ ! -e "$jsonFilePath" ] && echo "Analytics json $jsonFilePath is not available" && exit 8
+
+profile=$(jq -r '.profile' "$jsonFilePath")
+if [ -z "$profile" ]; then
+  echo "Error: The 'profile' field is missing or empty in $jsonFilePath"
+  exit 1
+fi
+
+isHostIBM=$(jq -r '.is_host_ibm' "$jsonFilePath")
+if [ -z "$isHostIBM" ]; then
+  echo "Error: The 'is_host_ibm' field is missing or empty in $jsonFilePath"
+  exit 1
+fi
+
+isBot=$(jq -r '.is_bot' "$jsonFilePath")
+if [ -z "$isBot" ]; then
+  echo "Error: The 'is_bot' field is missing in $jsonFilePath"
+  exit 1
+fi
+
+zopen install bison -y
+
+# Check if the "installs" field is present
+installs=$(jq -r '.installs' "$jsonFilePath")
+
+if [ -z "$installs" ]; then
+  echo "Error: The 'installs' field is missing in $jsonFilePath"
+  exit 1
+fi
+
+jqFilter='.installs[] | select(.name == "bison" and .isUpgrade == 0)'
+
+if [ -z "$(jq "$jqFilter" "$jsonFilePath")" ]; then
+  echo "Error: The specified installation details for 'bison' are missing in $jsonFilePath"
+  exit 1
+fi
+
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+zopen_clear_and_restore
+
+exit 0
+
