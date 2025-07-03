@@ -61,7 +61,7 @@ if [ -z "$installs" ]; then
   exit 1
 fi
 
-jqFilter='.installs[] | select(.name == "bison" and .isUpgrade == 0)'
+jqFilter='.installs[] | select(.name == "bison" and .isUpgrade == false)'
 
 if [ -z "$(jq "$jqFilter" "$jsonFilePath")" ]; then
   echo "Error: The specified installation details for 'bison' are missing in $jsonFilePath"
