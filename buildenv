@@ -10,6 +10,7 @@ export ZOPEN_CATEGORIES="utilities"
 
 
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
+export ZOPEN_DEV_TAG="new_installer"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
 export ZOPEN_STABLE_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_STABLE_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
@@ -66,6 +67,14 @@ else
     exit 8
   fi
 fi
+
+zopen_post_buildenv()
+{
+  if [ "${ZOPEN_BUILD_LINE}x" = "DEVx" ]; then
+    ZOPEN_CHECK="skip"
+  fi
+}
+
 
 zopen_init()
 {
