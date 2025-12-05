@@ -11,9 +11,9 @@ export ZOPEN_CATEGORIES="utilities"
 
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_TAG="new_installer"
-export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
+export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
 export ZOPEN_STABLE_URL="https://github.com/ZOSOpenTools/meta.git"
-export ZOPEN_STABLE_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils"
+export ZOPEN_STABLE_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
 
 export ZOPEN_COMP=SKIP
 export ZOPEN_CONFIGURE="skip"
@@ -178,6 +178,7 @@ ZZ
 }
 
 zopen_pre_terminate() {
+    set -x
   # Test setup of meta
   rm -rf "$ZOPEN_ROOT/zopen_test"
   cd "$ZOPEN_INSTALL_DIR"
@@ -187,6 +188,7 @@ zopen_pre_terminate() {
   . ./.env
   zopen init -y "$ZOPEN_ROOT/zopen_test"
   # shellcheck disable=SC1091
+
   . "$ZOPEN_ROOT/zopen_test/etc/zopen-config"
   rm -rf .installed
 
