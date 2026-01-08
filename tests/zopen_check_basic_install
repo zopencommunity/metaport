@@ -3,7 +3,7 @@
 #
 # Basic install of zopen
 #
-
+set -x
 fail(){ echo "$@"; exit 8; }
 WORKDIR="$1"
 INCLUDEDIR="$2"
@@ -76,12 +76,18 @@ if ! zopen install zotsample -y; then
     fail "Test of simple install failed."
 fi
 
-result=$(zopen install zotsampleport 2>&1)
-expected_result="- Querying repo for latest package information.
-***ERROR: The following requested port(s) do not exist:
-	 zotsampleport
-***ERROR: Check port name(s), remove any port suffixes and retry command."
-if [[ "${result}" != "${expected_result}" ]]; then
+if ! result=$(zopen install zotsample); then
+  fail "Installation of zotsample did not fail"
+fi
+
+if ! containsWords "ALL" "$result" "ERROR" "zotsample"; then
+  fail "Error message did not report failed package name"
+fi
+
+expected_result="***ERROR: The following ports could not be installed:
+***ERROR:     zotsample
+***ERROR: Check port name(s), remove any extra 'port' suffixes and retry command."
+if [ "${result}" != "${expected_result}" ]; then
     fail "Test of identifying port suffix failed."
 fi
 

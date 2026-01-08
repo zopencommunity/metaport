@@ -5,13 +5,16 @@
 #
 set -e # hard failure if any commands fail
 WORKDIR="$1"
+INCLUDEDIR="$2"
+zopen_tool_binary=$(type zopen | cut -d' ' -f3)
+zopen_tool_directory=$( dirname "${zopen_tool_binary}" )
 
-fail(){ echo "Test failure: $*"; exit 8; }
+# include helper script
+# shellcheck disable=SC1091
+. "${INCLUDEDIR}/common.sh"
 
-zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
-[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+install_dummy_env
 
-export ZOPEN_ROOTFS="${zopenenv}"
 export ZOPEN_PKGINSTALL="${ZOPEN_ROOTFS}/usr/local/zopen"
 testpkg="zotsample"
 

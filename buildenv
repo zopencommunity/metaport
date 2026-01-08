@@ -1,18 +1,13 @@
-# bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.4"
+# bump: meta-version /META_VERSION="(.*)"/ https://github.com/zopencommunity/meta.git|semver:^0
+META_VERSION="0.9.0"
 
-# To test a development environment, set the following to the absolute path of the
-# 'meta' directory either in the script or in the environment
-#export ZOPEN_META_DEV_ROOT=""
-
-export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_CATEGORIES="utilities"
 
 
-export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
+export ZOPEN_DEV_URL="https://github.com/zopencommunity/meta.git"
 export ZOPEN_DEV_TAG="new_installer"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
-export ZOPEN_STABLE_URL="https://github.com/ZOSOpenTools/meta.git"
+export ZOPEN_STABLE_URL="https://github.com/zopencommunity/meta.git"
 export ZOPEN_STABLE_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
 
 export ZOPEN_COMP=SKIP
@@ -21,17 +16,26 @@ export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
 
-export ZOPEN_META_DEV_ROOT="" # Set to test zopen directory if not testing system default
 
-META_DEV_DIR="$(pwd -P)/meta"
+# Set which meta installation type to use:
+# BUILD - the current environment and default
+# DIR - an existing installation on disk
+# GIT - extract a version of meta from a specific git location and branch
+META_INSTALL="BUILD" # or "DIR" or "GIT"
+ # Set the following to test an existing zopen directory
+export ZOPEN_META_DEV_ROOT="${ZOPEN_META_DEV_ROOT:-}"
+# Set the following to pull a different fork of meta
+ZOPEN_META_CLONE_URL=""
+export ZOPEN_META_CLONE_URL="${ZOPEN_META_CLONE_URL:-https://github.com/DevonianTeuchter/meta.git}"
+# Set the following to specify a different branch; or leave for main
+ZOPEN_META_GIT_BRANCH="new.installer"
+export ZOPEN_META_CLONE_BRANCH="${ZOPEN_META_GIT_BRANCH:-main}"  
+
+META_DEV_DIR="${PWD}/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
-  if [ -d "${META_DEV_DIR}" ]; then
-    if [ -L "${META_DEV_DIR}" ]; then
-      echo "ZOPEN_META_DEV_ROOT is NOT set, but ${META_DEV_DIR} is a symbolic link. Either set ZOPEN_META_DEV_ROOT or remove the symbolic link"
-      exit 8
-    fi
-  else
-    echo "Using meta installation from '${META_DEV_DIR}'"
+  echo "Ensuring no problematic symbolic links from earlier runs"
+  if [ -d "${META_DEV_DIR}" ] && [ -L "${META_DEV_DIR}" ]; then
+    handle_error "Error: ${META_DEV_DIR} is a symbolic link. Remove the link or set ZOPEN_META_DEV_ROOT."
   fi
 else
   echo "Installation will not be performed - testing existing dev environment"
@@ -42,33 +46,25 @@ else
 
   echo "Clean up existing meta directory"
   if [ -d "${META_DEV_DIR}" ]; then
-    if ! [ -L "${META_DEV_DIR}" ]; then
-      # We may already have a git clone'd meta. If so, move the cloned tree to meta-cloned
-      backup_dir="${META_DEV_DIR}-cloned.$(date +%Y%m%d%H%M%S)"
-      echo "Backing up old directory '${META_DEV_DIR}' to '${backup_dir}'"
-      mv "${META_DEV_DIR}" "${backup_dir}"
+    if [ ! -L "${META_DEV_DIR}" ]; then
+      echo "Moving/archiving existing non-link directory"
+      mv "${META_DEV_DIR}" "${META_DEV_DIR}-cloned"
     else
-      # There may already be a symbolic link here - if so, delete it in case it is stale
-      echo "Removing existing symlink at '${META_DEV_DIR}'"
+      echo "Removing existing symbolic link"
       rm "${META_DEV_DIR}"
     fi
-  else
-    # Directory has not yet been cloned - just have symbolic link created (next)
-    :
   fi
-      
-  if ! ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" ; then
-    echo "Unable to create symbolic from ${META_DEV_DIR} to ${ZOPEN_META_DEV_ROOT}" >&2
-    exit 8
-  fi
+
+  echo "Creating symbolic link to development root"
+  ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" || handle_error "Unable to create symbolic link"
+fi
 
 zopen_post_buildenv()
 {
-  if [ "${ZOPEN_BUILD_LINE}x" = "DEVx" ]; then
-    ZOPEN_CHECK="skip"
-  fi
+  # As we are meta, out runtime dependency is ourself! Very meta ;-)
+  # shellcheck disable=SC2034
+  noInstallRuntimeDeps=true
 }
-
 
 zopen_init()
 {
@@ -77,7 +73,7 @@ zopen_init()
   if ! myzopen=$( whence zopen ); then
     handle_error "Error - unable to find zopen in the PATH"
   fi
-  [ "${myzopen}" == "${PWD}/bin/zopen" ] || handle_error "Error - unable to find local zopen at ${PWD}/bin/zopen"
+  [ "${myzopen}" = "${PWD}/bin/zopen" ] || handle_error "Error - unable to find local zopen at ${PWD}/bin/zopen"
 }
 
 zopen_check()
@@ -100,7 +96,8 @@ zopen_check()
   zopen_print_banner "Start Tests"
 
 
-  checks=${ZOPEN_ROOT}/tests/zopen_check_*
+  # shellcheck disable=SC2125  # we want globbing
+  checks="${ZOPEN_ROOT}"/tests/zopen_check_*
   echo "Found checks: ${checks}"
   for check in $checks ; do
     [ ! -x "${check}" ] \
@@ -153,6 +150,10 @@ zopen_install()
     html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
     groff -m mandoc -Thtml -Wall "${man}" >"${html}"
   done
+  # To ensure dependency calculations are correct
+  echo "Generating symlink for myself: '${ZOPEN_INSTALL_DIR}../meta' -> '${ZOPEN_INSTALL_DIR}'"
+  ln -s "${ZOPEN_INSTALL_DIR}../meta" "${ZOPEN_INSTALL_DIR}" || \
+      handle_error "Cannot generate symlink"
   set +e
 }
 
@@ -198,3 +199,48 @@ zopen_get_version()
   version="$(./bin/zopen --version 2>/dev/null)"
   echo "${version}" | head -1 | awk '{ print $4; }'
 }
+
+clean_existing(){
+  printVerbose "Check if current target is a directory"
+  [ ! -d "${META_DEV_DIR}" ] && return
+  echo "Clean up existing meta directory at '${META_DEV_DIR}'"
+  if [ ! -L "${META_DEV_DIR}" ]; then
+    # Actually a physical directory, not a link to a dir
+    echo "Moving/archiving existing non-link directory"
+    mv "${META_DEV_DIR}" "${META_DEV_DIR}-backup.$(date +%Y%m%d%H%M%S)"
+  else
+    # A symlink to a directory so just remove the link
+    echo "Removing existing symbolic link at '${META_DEV_DIR}'"
+    rm "${META_DEV_DIR}"
+  fi
+}
+
+META_DEV_DIR="${PWD}/meta"
+case "${META_INSTALL}" in
+  BUILD) 
+    printVerbose "Setting test meta directory to current release (cloned in '${PWD}/meta')"
+    if [ -d "${META_DEV_DIR}" ] && [ -L "${META_DEV_DIR}" ]; then
+      handle_error "Error: ${META_DEV_DIR} is a symbolic link. Remove the link or set ZOPEN_META_DEV_ROOT."
+    fi
+  ;;
+  DIR)  
+    printVerbose "Using directory specified in ZOPEN_META_DEV_ROOT: '$(ZOPEN_META_DEV_ROOT)"
+    printVerbose "Validate custom meta directory"
+    echo "Testing existing dev environment at '${ZOPEN_META_DEV_DIR}'"
+    [ -d "${ZOPEN_META_DEV_ROOT}" ] || handle_error "Error: ZOPEN_META_DEV_ROOT does not exist: ${ZOPEN_META_DEV_ROOT}"
+    # TODO: is this really necessary when ZOPEN_META_DEV is a symlink?!?
+    [ "$(basename "${ZOPEN_META_DEV_ROOT}")" = "meta" ] || handle_error "Error: ZOPEN_META_DEV_ROOT must point to a 'meta' directory"
+    cleanExisting
+    printInfo "Creating symbolic link to development root"
+    ln -s "${ZOPEN_META_DEV_ROOT}" "${META_DEV_DIR}" || handle_error "Unable to create symbolic link"
+  ;;
+  GIT)
+    cleanExisting
+    printInfo "Cloning meta from '${ZOPEN_META_CLONE_URL}'"
+    gitClone "${ZOPEN_META_CLONE_URL}" "${ZOPEN_META_CLONE_BRANCH}"
+    # Should have a fresh cloned meta in ${PWD}/meta !
+  ;;
+  *) handle_error "Error: ${META_INSTALL} set to invalid value"
+esac
+
+
