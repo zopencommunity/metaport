@@ -27,10 +27,12 @@ export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
 export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
 zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
-
-echo "before cat"
+echo "before cat zopen-config"
+cat ${MYDIR}/../meta/include/common.sh
+echo "after cat zopen-config"
+echo "before cat zopen-config"
 cat ${zopenenv}/etc/zopen-config
-echo "after cat"
+echo "after cat zopen-config"
 . ${zopenenv}/etc/zopen-config
 
 jsonFilePath="${zopenenv}/var/lib/zopen/analytics.json"
