@@ -3,7 +3,7 @@
 #
 # Check usage statistics
 #
-
+set -x
 fail(){ echo "$@"; exit 8; }
 WORKDIR="$1"
 
@@ -72,5 +72,6 @@ fi
 
 zopen_clear_and_restore
 
+set +x
 exit 0
 
