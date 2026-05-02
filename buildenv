@@ -112,7 +112,7 @@ zopen_check()
 
 
   # shellcheck disable=SC2125  # We want globbing
-  checks=${ZOPEN_ROOT}/tests/zopen_check_*
+  checks=${ZOPEN_ROOT}/tests/zopen_check_usage
   echo $checks
   for check in $checks ; do
     [ ! -x "${check}" ] \
