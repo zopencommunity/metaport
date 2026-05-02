@@ -3,7 +3,7 @@
 #
 # Check usage statistics
 #
-set -x
+
 fail(){ echo "$@"; exit 8; }
 WORKDIR="$1"
 
@@ -26,8 +26,12 @@ export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
 export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
 export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
+export PS4='+ [${BASH_SOURCE##*/}:${LINENO}] '
+set -x
+export SHELLOPTS
 pwd
-ls -lTR ${MYDIR}
+ls -lTR ${MYDIR}/../
+which zopen
 zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
 echo "before cat zopen-config"
 cat ${MYDIR}/../meta/include/common.sh
@@ -36,6 +40,7 @@ echo "before cat zopen-config"
 cat ${zopenenv}/etc/zopen-config
 echo "after cat zopen-config"
 . ${zopenenv}/etc/zopen-config
+set +x
 
 jsonFilePath="${zopenenv}/var/lib/zopen/analytics.json"
 [ ! -e "$jsonFilePath" ] && echo "Analytics json $jsonFilePath is not available" && exit 8
@@ -79,6 +84,6 @@ fi
 
 zopen_clear_and_restore
 
-set +x
+
 exit 0
 
