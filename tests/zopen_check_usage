@@ -26,6 +26,8 @@ export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
 export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
 export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
+pwd
+ls -lTR ${MYDIR}
 zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
 echo "before cat zopen-config"
 cat ${MYDIR}/../meta/include/common.sh
