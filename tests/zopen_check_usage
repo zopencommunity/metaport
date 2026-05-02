@@ -28,6 +28,9 @@ export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
 zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
 
+echo "before cat"
+cat ${zopenenv}/etc/zopen-config
+echo "after cat"
 . ${zopenenv}/etc/zopen-config
 
 jsonFilePath="${zopenenv}/var/lib/zopen/analytics.json"
