@@ -28,17 +28,12 @@ export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
 
 export PS4='+ [${BASH_SOURCE##*/}:${LINENO}] '
 set -x
-export SHELLOPTS
-pwd
-ls -lTR ${MYDIR}/../
 which zopen
+echo "Before zopen init"
+typeset -f
 zopen init -y --enable-stats "${zopenenv}"  # force enable statistics
-echo "before cat zopen-config"
-cat ${MYDIR}/../meta/include/common.sh
-echo "after cat zopen-config"
-echo "before cat zopen-config"
-cat ${zopenenv}/etc/zopen-config
-echo "after cat zopen-config"
+echo "After zopen init"
+typeset -f
 . ${zopenenv}/etc/zopen-config
 set +x
 
