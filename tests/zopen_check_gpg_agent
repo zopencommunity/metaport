@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Test script for GPG agent functionality and isolation in zopen-install
+# Test script for GPG agent functionality
 #
 
 set -e # hard failure if any commands fail
