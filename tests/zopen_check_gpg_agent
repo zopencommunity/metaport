@@ -33,12 +33,11 @@ debug=true
 verbose=true
 
 # Locate zopen-install script to extract functions
+MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
 if [ -f "${MYDIR}/../meta/bin/zopen-install" ]; then
   ZOPEN_INSTALL_SCRIPT="${MYDIR}/../meta/bin/zopen-install"
 elif [ -f "meta/bin/zopen-install" ]; then
   ZOPEN_INSTALL_SCRIPT="meta/bin/zopen-install"
-elif [ -f "/home/haritha/code/meta/bin/zopen-install" ]; then
-  ZOPEN_INSTALL_SCRIPT="/home/haritha/code/meta/bin/zopen-install"
 else
   ZOPEN_INSTALL_SCRIPT=$(command -v zopen-install 2>/dev/null)
 fi
@@ -49,7 +48,7 @@ if [ ! -f "${ZOPEN_INSTALL_SCRIPT}" ]; then
 fi
 
 echo "Extracting functions from ${ZOPEN_INSTALL_SCRIPT}"
-EXTRACTED_FUNCTIONS=$(sed -n '/^startGPGAgent() {/,/^}/p; /^gpgCleanup() {/,/^}/p' "${ZOPEN_INSTALL_SCRIPT}")
+EXTRACTED_FUNCTIONS=$(perl -ne 'print if /^(startGPGAgent|gpgCleanup)\s*\(\)\s*\{/ .. /^\}/' "${ZOPEN_INSTALL_SCRIPT}")
 eval "$EXTRACTED_FUNCTIONS"
 
 # Test setup
@@ -64,7 +63,7 @@ echo "Running GPG Agent tests..."
 # Test 1: verifySignatureOfPax environment setup
 test_env_setup() {
   echo "--- Test 1: Environment Setup ---"
-  TMP_GPG_DIR="$zopen_tmp_dir/zopen_gpg_verify_${LOGNAME}_${MYPID}"
+  TMP_GPG_DIR="$zopen_tmp_dir/g.$MYPID"
   mkdir -p "$TMP_GPG_DIR"
   chmod 700 "$TMP_GPG_DIR"
   export GNUPGHOME="$TMP_GPG_DIR"
@@ -88,8 +87,8 @@ test_env_setup() {
 test_start_agent() {
   echo "--- Test 2: startGPGAgent ---"
 
-  if ! command -v gpgconf >/dev/null; then
-     echo "SKIPPED: gpgconf not found in PATH"
+  if ! command -v gpgconf >/dev/null || ! command -v gpg-connect-agent >/dev/null; then
+     echo "SKIPPED: gpg tools not found in PATH"
      return 0
   fi
 
@@ -98,9 +97,10 @@ test_start_agent() {
     return 1
   fi
   
-  # Check if agent is running for this GNUPGHOME
-  if ! gpgconf --list-dirs agent-socket >/dev/null 2>&1; then
-    echo "FAILED: gpg-agent socket not found"
+  # Check if agent is actually running and responding for this GNUPGHOME
+  GCA_OUT=$(gpg-connect-agent /bye 2>&1)
+  if [ $? -ne 0 ]; then
+    echo "FAILED: gpg-agent is not responding. Error: $GCA_OUT"
     return 1
   fi
   
