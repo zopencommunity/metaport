@@ -1,5 +1,5 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.4"
+META_VERSION="0.8.5"
 
 # To test a development environment, set the following to the absolute path of the
 # 'meta' directory either in the script or in the environment
@@ -89,6 +89,24 @@ zopen_init()
     echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
     return 8
   fi
+
+  # Download curl package if not present
+  CURL_PACKAGE="curl-8.10.1.20241001_214340.zos.pax.Z"
+  CURL_URL="https://github.com/zopencommunity/curlport/releases/download/STABLE_curlport_2544/${CURL_PACKAGE}"
+  mkdir -p "$PWD/packages"
+  
+  # Check if any curl package already exists
+  existing_curl=$(ls "$PWD/packages"/curl-*.zos.pax.Z 2>/dev/null | head -1)
+  
+  if [ -n "$existing_curl" ]; then
+    echo "Found existing curl package: $(basename "$existing_curl"), skipping download"
+  else
+    echo "Downloading curl package from ${CURL_URL}..."
+    curl -L -o "$PWD/packages/${CURL_PACKAGE}" "${CURL_URL}" || {
+      echo "Error: Failed to download curl package"
+      return 1
+    }
+  fi
 }
 
 zopen_check()
@@ -150,17 +168,43 @@ zopen_install()
     echo "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
     return 8
   fi
+  
   mkdir -p "$ZOPEN_INSTALL_DIR"
+
   if [ -z "$ZOPEN_META_DEV_ROOT" ]; then
     rm -rvf "$PWD/zotsampleport"
     rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   fi
-  cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
+
+  # Copy essential runtime folders
+  for folder in bin include man data utilities patch-utils; do
+    if [ -d "$PWD/$folder" ]; then
+      cp -rv "$PWD/$folder" "$ZOPEN_INSTALL_DIR/"
+    fi
+  done
+
+  # Copy only curl packages
+  if [ -d "$PWD/packages" ]; then
+    mkdir -p "$ZOPEN_INSTALL_DIR/packages"
+    for curl_pkg in "$PWD/packages"/curl-*.zos.pax.Z; do
+      [ -f "$curl_pkg" ] && cp -v "$curl_pkg" "$ZOPEN_INSTALL_DIR/packages/"
+    done
+  fi
+
+  # Copy essential runtime files
+  for file in .env cacert.pem LICENSE; do
+    if [ -f "$PWD/$file" ]; then
+      cp -v "$PWD/$file" "$ZOPEN_INSTALL_DIR/"
+    fi
+  done
+
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
+
   mkdir -p "$ZOPEN_INSTALL_DIR/ref"
   echo "HTML reference pages will be written to $ZOPEN_INSTALL_DIR/ref"
-  for man in $ZOPEN_INSTALL_DIR/man/man1/*.1; do
+  for man in "$ZOPEN_INSTALL_DIR"/man/man1/*.1; do
+    [ ! -f "$man" ] && continue
     base=${man##*/}
     name=${base%%.1}
     html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
