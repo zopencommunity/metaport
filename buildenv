@@ -20,6 +20,7 @@ export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
+export ZOPEN_SETUP_NO_REPLACE=1 
 
 META_DEV_DIR="$(pwd -P)/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
@@ -121,6 +122,7 @@ zopen_init()
 
 zopen_check()
 {
+  unset ZOPEN_SETUP_NO_REPLACE
   WORK_DIR="${ZOPEN_ROOT}/work"
   INCLUDE_DIR="${ZOPEN_ROOT}/tests/include"
   mkdir -p "${WORK_DIR}"
@@ -224,6 +226,7 @@ ZZ
 }
 
 zopen_pre_terminate() {
+  unset ZOPEN_SETUP_NO_REPLACE
   # Save the starting directory explicitly
   START_DIR="$PWD"
 
