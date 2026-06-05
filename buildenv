@@ -1,5 +1,5 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.4"
+META_VERSION="0.8.5"
 
 # To test a development environment, set the following to the absolute path of the
 # 'meta' directory either in the script or in the environment
@@ -20,6 +20,7 @@ export ZOPEN_CONFIGURE="skip"
 export ZOPEN_MAKE="skip"
 export ZOPEN_CHECK="zopen_check"
 export ZOPEN_INSTALL="zopen_install"
+export ZOPEN_SETUP_NO_REPLACE=1 
 
 META_DEV_DIR="$(pwd -P)/meta"
 if [ -z "${ZOPEN_META_DEV_ROOT}" ] ; then
@@ -89,10 +90,39 @@ zopen_init()
     echo "Error - unable to find local zopen at ${PWD}/bin/zopen" >&2
     return 8
   fi
+
+  # Download curl package
+  CURL_PACKAGE="curl-8.10.1.20241001_214340.zos.pax.Z"
+  CURL_URL="https://github.com/zopencommunity/curlport/releases/download/STABLE_curlport_2544/${CURL_PACKAGE}"
+  mkdir -p "$PWD/packages"
+  
+  echo "Downloading curl package from ${CURL_URL}..."
+  curl -L -o "$PWD/packages/${CURL_PACKAGE}" "${CURL_URL}" || {
+    echo "Error: Failed to download curl package"
+    return 1
+  }
+
+  # Copy date and sha256sum utilities from coreutils dependency
+  mkdir -p "$PWD/utilities"
+  if [ -n "$COREUTILS_HOME" ] && [ -d "$COREUTILS_HOME/bin" ]; then
+    for util in date sha256sum; do
+      # Try both regular and GNU-prefixed versions
+      if [ -f "$COREUTILS_HOME/bin/$util" ]; then
+        cp -v "$COREUTILS_HOME/bin/$util" "$PWD/utilities/"
+      elif [ -f "$COREUTILS_HOME/bin/g$util" ]; then
+        cp -v "$COREUTILS_HOME/bin/g$util" "$PWD/utilities/$util"
+      else
+        echo "Warning: $util (or g$util) not found in coreutils at $COREUTILS_HOME/bin"
+      fi
+    done
+  else
+    echo "Warning: COREUTILS_HOME not set or coreutils bin directory not found"
+  fi
 }
 
 zopen_check()
 {
+  unset ZOPEN_SETUP_NO_REPLACE
   WORK_DIR="${ZOPEN_ROOT}/work"
   INCLUDE_DIR="${ZOPEN_ROOT}/tests/include"
   mkdir -p "${WORK_DIR}"
@@ -150,17 +180,35 @@ zopen_install()
     echo "Wrong version of Perl: $perlver.$perlrel (expected 5.38 or higher)"
     return 8
   fi
+  
   mkdir -p "$ZOPEN_INSTALL_DIR"
+
   if [ -z "$ZOPEN_META_DEV_ROOT" ]; then
     rm -rvf "$PWD/zotsampleport"
     rm -rvf "$PWD/.git"* "$PWD/.editorconfig"
   fi
-  cp -rv $PWD/* $ZOPEN_INSTALL_DIR/
+
+  # Copy essential runtime folders
+  for folder in bin include man data utilities packages patch-utils; do
+    if [ -d "$PWD/$folder" ]; then
+      cp -rv "$PWD/$folder" "$ZOPEN_INSTALL_DIR/"
+    fi
+  done
+
+  # Copy essential runtime files
+  for file in .env cacert.pem LICENSE; do
+    if [ -f "$PWD/$file" ]; then
+      cp -v "$PWD/$file" "$ZOPEN_INSTALL_DIR/"
+    fi
+  done
+
   mkdir -p "$ZOPEN_INSTALL_DIR/man/man1"
   zopen-help2man "$ZOPEN_INSTALL_DIR/man/man1"
+
   mkdir -p "$ZOPEN_INSTALL_DIR/ref"
   echo "HTML reference pages will be written to $ZOPEN_INSTALL_DIR/ref"
-  for man in $ZOPEN_INSTALL_DIR/man/man1/*.1; do
+  for man in "$ZOPEN_INSTALL_DIR"/man/man1/*.1; do
+    [ ! -f "$man" ] && continue
     base=${man##*/}
     name=${base%%.1}
     html="$ZOPEN_INSTALL_DIR/ref/${name}.html"
@@ -178,6 +226,7 @@ ZZ
 }
 
 zopen_pre_terminate() {
+  unset ZOPEN_SETUP_NO_REPLACE
   # Save the starting directory explicitly
   START_DIR="$PWD"
 
