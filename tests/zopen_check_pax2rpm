@@ -1,0 +1,74 @@
+#!/bin/env bash
+
+#
+# Basic 'zopen-pax2rpm' test
+#
+
+set -e # hard failure if any commands fail
+# Ensure WORKDIR is absolute
+mkdir -p "$1"
+WORKDIR="$(cd "$1" > /dev/null 2>&1 && pwd -P)"
+
+if [ -z "${WORKDIR}" ]; then
+  echo "Usage: $0 <workdir>"
+  exit 1
+fi
+
+ME=$(basename $0)
+MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
+
+. "${MYDIR}/include/zopen_check_services"
+
+zopen_save_and_clear
+
+# Set up environment variables
+export PATH="${MYDIR}/../meta/bin:${PATH}:${ZOPEN_OLD_PATH_SAVE}"
+export ZOPEN_CA="$ZOPEN_CA_SAVE"
+export ZOPEN_ROOTFS="$ZOPEN_ROOTFS_SAVE"
+export ZOPEN_SEARCH_PATH="$ZOPEN_SEARCH_PATH_SAVE"
+export ZOPEN_LOG_PATH="$ZOPEN_LOG_PATH_SAVE"
+export ZOPEN_PKGINSTALL="$ZOPEN_PKGINSTALL_SAVE"
+
+# Create a work directory for this test
+TESTDIR="${WORKDIR}/pax2rpm-test"
+rm -rf "${TESTDIR}"
+mkdir -p "${TESTDIR}"
+cd "${TESTDIR}"
+
+echo "Creating dummy pax file..."
+mkdir -p mypkg-1.2.3/bin
+echo "echo hello" > mypkg-1.2.3/bin/hello
+chmod +x mypkg-1.2.3/bin/hello
+pax -wvf mypkg-1.2.3.pax mypkg-1.2.3 > /dev/null 2>&1
+
+echo "Running zopen-pax2rpm..."
+zopen-pax2rpm mypkg-1.2.3.pax \
+    --summary "A test package" \
+    --license "MIT" \
+    --url "https://github.com/ZOSOpenTools" \
+    --description "This is a test description for the package."
+
+# Verify that the spec file was generated
+if [ ! -f mypkg.spec ]; then
+    echo "Error: mypkg.spec was not generated"
+    exit 1
+fi
+
+echo "Verifying spec file content..."
+grep -q "Name:.*mypkg" mypkg.spec || (echo "Name not found in spec"; exit 1)
+grep -q "Version:.*1.2.3" mypkg.spec || (echo "Version not found in spec"; exit 1)
+grep -q "Summary:.*A test package" mypkg.spec || (echo "Summary not found in spec"; exit 1)
+grep -q "License:.*MIT" mypkg.spec || (echo "License not found in spec"; exit 1)
+
+echo "Running zopen-pax2rpm with --dry-run..."
+zopen-pax2rpm mypkg-1.2.3.pax --summary "test" --dry-run > /dev/null
+
+# Clean up
+cd "${WORKDIR}"
+rm -rf "${TESTDIR}"
+
+echo "zopen-pax2rpm test passed!"
+
+zopen_clear_and_restore
+
+exit 0
