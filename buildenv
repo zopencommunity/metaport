@@ -12,7 +12,7 @@ export ZOPEN_CATEGORIES="utilities"
 export ZOPEN_DEV_URL="https://github.com/ZOSOpenTools/meta.git"
 export ZOPEN_DEV_TAG="new_installer"
 export ZOPEN_DEV_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
-export ZOPEN_STABLE_URL="https://github.com/ZOSOpenTools/meta.git"
+export ZOPEN_STABLE_URL="https://github.com/sachintu47/meta.git"
 export ZOPEN_STABLE_DEPS="git gzip make tar bash zoslib help2man perl curl grep groff coreutils openssl"
 
 export ZOPEN_COMP=SKIP
