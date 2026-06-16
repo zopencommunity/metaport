@@ -1,0 +1,80 @@
+#!/bin/sh
+#
+# Check that zopen correctly identifies a temporary directory even if it's a symlink
+# (Testing the fix for dynamic symlinks on z/OS)
+#
+
+set -e
+WORKDIR="$1"
+[ -z "${WORKDIR}" ] && WORKDIR="/tmp/zopen_test_tmpdir_$$"
+mkdir -p "${WORKDIR}"
+
+# Create a real directory and a symlink to it
+REAL_TMP="${WORKDIR}/real_tmp"
+MOCK_TMP="${WORKDIR}/mock_tmp"
+mkdir -p "${REAL_TMP}"
+ln -s "${REAL_TMP}" "${MOCK_TMP}"
+
+# Find the common.sh file in the meta directory
+# ZOPEN_ROOT is expected to be set by the test runner (zopen_check in buildenv)
+if [ -z "${ZOPEN_ROOT}" ]; then
+    # Fallback for manual execution
+    ZOPEN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
+fi
+
+META_INCLUDE="${ZOPEN_ROOT}/meta/include"
+
+if [ ! -f "${META_INCLUDE}/common.sh" ]; then
+    echo "ERROR: Could not locate meta/include/common.sh at ${META_INCLUDE}/common.sh" >&2
+    exit 1
+fi
+
+# We want to test zopenInitialize. 
+# We'll run it in a subshell with TMPDIR set to the symlink.
+# We also need to mock some dependencies so zopenInitialize doesn't fail on other things.
+
+TEST_SCRIPT="${WORKDIR}/test_init.sh"
+cat << EOF > "${TEST_SCRIPT}"
+#!/bin/sh
+# Mock functions that zopenInitialize calls
+printError() { echo "***ERROR: \$1"; exit 4; }
+defineEnvironment() { :; }
+defineANSI() { :; }
+processConfig() { :; }
+printElapsedTime() { :; }
+cleanupFunction() { :; }
+# Mock variables
+ZOPEN_ROOTFS="${WORKDIR}/rootfs"
+mkdir -p "\${ZOPEN_ROOTFS}/etc/zopen"
+INCDIR="${META_INCLUDE}"
+
+# Source common.sh but don't let it run zopenInitialize automatically if it does
+# (Actually common.sh runs it at the end, so we just source it)
+. "${META_INCLUDE}/common.sh"
+EOF
+
+chmod +x "${TEST_SCRIPT}"
+
+echo "Testing with TMPDIR set to symlink: ${MOCK_TMP}"
+export TMPDIR="${MOCK_TMP}"
+if output=$(sh "${TEST_SCRIPT}" 2>&1); then
+    echo "SUCCESS: zopenInitialize accepted the symlink as a valid TMPDIR"
+else
+    echo "FAILURE: zopenInitialize failed with output:"
+    echo "${output}"
+    exit 1
+fi
+
+echo "Testing with TMPDIR set to directory with trailing slash: ${REAL_TMP}/"
+export TMPDIR="${REAL_TMP}/"
+if output=$(sh "${TEST_SCRIPT}" 2>&1); then
+    echo "SUCCESS: zopenInitialize accepted the directory with trailing slash"
+else
+    echo "FAILURE: zopenInitialize failed with output:"
+    echo "${output}"
+    exit 1
+fi
+
+# Clean up
+rm -rf "${WORKDIR}"
+exit 0
