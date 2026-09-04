@@ -1,5 +1,5 @@
 # bump: meta-version /META_VERSION="(.*)"/ https://github.com/ZOSOpenTools/meta.git|semver:^0
-META_VERSION="0.8.5"
+META_VERSION="0.8.6"
 
 # To test a development environment, set the following to the absolute path of the
 # 'meta' directory either in the script or in the environment
