@@ -152,6 +152,53 @@ echo "Test versioned package [zopen install -y which=2.21.20241202_202927]"
 if ! zopen install -y which=2.21.20241202_202927; then
   fail "Install of known available version (which 2.21.20241202_202927) failed"
 fi
+# Verify exact version in .releaseinfo file
+installed_ver=$(cat "${zopenenv}/usr/local/zopen/which/which/.releaseinfo")
+if [ "${installed_ver}" != "2.21.20241202_202927" ]; then
+  fail "Wrong which version installed: expected 2.21.20241202_202927, got ${installed_ver}"
+fi
+
+echo "Test semantic range (strictly greater than) [zopen install -y 'curl>8.17']"
+if ! zopen install -y "curl>8.17"; then
+  fail "Range install curl>8.17 failed"
+fi
+binary_ver=$("${zopenenv}/usr/local/bin/curl" --version | head -n 1 | awk '{print $2}')
+echo "Installed (GT check): Binary reports: ${binary_ver}"
+major=$(echo "${binary_ver}" | cut -d. -f1)
+minor=$(echo "${binary_ver}" | cut -d. -f2)
+if [ "${major}" -gt 8 ] || { [ "${major}" -eq 8 ] && [ "${minor}" -gt 17 ]; }; then
+  echo "Verified: ${binary_ver} satisfies > 8.17"
+else
+  fail "Installed version ${binary_ver} does not satisfy > 8.17"
+fi
+
+echo "Test semantic range (greater than or equal) [zopen install -y 'curl>=8.19']"
+if ! zopen install -y "curl>=8.19"; then
+  fail "Range install curl>=8.19 failed"
+fi
+binary_ver=$("${zopenenv}/usr/local/bin/curl" --version | head -n 1 | awk '{print $2}')
+echo "Installed (GTE check): Binary reports: ${binary_ver}"
+major=$(echo "${binary_ver}" | cut -d. -f1)
+minor=$(echo "${binary_ver}" | cut -d. -f2)
+if [ "${major}" -gt 8 ] || { [ "${major}" -eq 8 ] && [ "${minor}" -ge 19 ]; }; then
+  echo "Verified: ${binary_ver} satisfies >= 8.19"
+else
+  fail "Installed version ${binary_ver} does not satisfy >= 8.19"
+fi
+
+echo "Test semantic range (less than) [zopen install -y 'curl<8.18']"
+if ! zopen install -y "curl<8.18"; then
+  fail "Range install curl<8.18 failed"
+fi
+binary_ver=$("${zopenenv}/usr/local/bin/curl" --version | head -n 1 | awk '{print $2}')
+echo "Installed (LT check): Binary reports: ${binary_ver}"
+major=$(echo "${binary_ver}" | cut -d. -f1)
+minor=$(echo "${binary_ver}" | cut -d. -f2)
+if [ "${major}" -lt 8 ] || { [ "${major}" -eq 8 ] && [ "${minor}" -lt 18 ]; }; then
+  echo "Verified: ${binary_ver} satisfies < 8.18"
+else
+  fail "Installed version ${binary_ver} does not satisfy < 8.18"
+fi
 
 echo "Test odd versioning [zopen install -y =1.2.3.4]"
 if zopen install -y =1.2.3.4; then
