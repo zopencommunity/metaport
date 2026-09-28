@@ -1,0 +1,144 @@
+#!/bin/sh
+
+#
+# Test script for GPG agent functionality
+#
+
+set -e # hard failure if any commands fail
+WORKDIR="$1"
+INCLUDEDIR="$2"
+
+# include helper script
+. "${INCLUDEDIR}/common.sh"
+
+zopen_print_banner "GPG Agent Tests"
+
+# Try to initialize a zopen environment to get access to gpg tools
+zopen_test_env="${WORKDIR}/zopen-env-$(basename "$0")"
+if [ ! -d "${zopen_test_env}" ]; then
+  echo "Initializing zopen environment for test..."
+  zopen init -y "${zopen_test_env}" >/dev/null 2>&1 || echo "Warning: zopen init failed"
+fi
+
+if [ -f "${zopen_test_env}/etc/zopen-config" ]; then
+  . "${zopen_test_env}/etc/zopen-config"
+fi
+
+# Mocking common.sh functions
+printInfo() { echo "INFO: $1"; }
+printVerbose() { echo "VERBOSE: $1"; }
+printWarning() { echo "WARNING: $1"; }
+printError() { echo "ERROR: $1"; exit 1; }
+debug=true
+verbose=true
+
+# Locate zopen-install script to extract functions
+MYDIR="$(cd "$(dirname "$0")" > /dev/null 2>&1 && pwd -P)"
+if [ -f "${MYDIR}/../meta/bin/zopen-install" ]; then
+  ZOPEN_INSTALL_SCRIPT="${MYDIR}/../meta/bin/zopen-install"
+elif [ -f "meta/bin/zopen-install" ]; then
+  ZOPEN_INSTALL_SCRIPT="meta/bin/zopen-install"
+else
+  ZOPEN_INSTALL_SCRIPT=$(command -v zopen-install 2>/dev/null)
+fi
+
+if [ ! -f "${ZOPEN_INSTALL_SCRIPT}" ]; then
+  echo "ERROR: Could not find zopen-install script at ${ZOPEN_INSTALL_SCRIPT}"
+  exit 1
+fi
+
+echo "Extracting functions from ${ZOPEN_INSTALL_SCRIPT}"
+EXTRACTED_FUNCTIONS=$(perl -ne 'print if /^(startGPGAgent|gpgCleanup)\s*\(\)\s*\{/ .. /^\}/' "${ZOPEN_INSTALL_SCRIPT}")
+eval "$EXTRACTED_FUNCTIONS"
+
+# Test setup
+# Use the WORKDIR provided by metaport
+TEST_DIR=$(mktemp -d "${WORKDIR}/zopen_test_gpg_XXXXXX")
+zopen_tmp_dir="$TEST_DIR"
+LOGNAME=$(id -un)
+MYPID=$$
+
+echo "Running GPG Agent tests..."
+
+# Test 1: verifySignatureOfPax environment setup
+test_env_setup() {
+  echo "--- Test 1: Environment Setup ---"
+  TMP_GPG_DIR="$zopen_tmp_dir/g.$MYPID"
+  mkdir -p "$TMP_GPG_DIR"
+  chmod 700 "$TMP_GPG_DIR"
+  export GNUPGHOME="$TMP_GPG_DIR"
+  
+  if [ "$GNUPGHOME" != "$TMP_GPG_DIR" ]; then
+    echo "FAILED: GNUPGHOME not set correctly"
+    return 1
+  fi
+  
+  # Check permissions
+  PERMS=$(ls -ld "$TMP_GPG_DIR" | awk '{print $1}')
+  case "$PERMS" in
+    drwx------*) ;; 
+    *) echo "FAILED: Incorrect permissions on TMP_GPG_DIR: $PERMS"
+       return 1 ;;
+  esac
+  echo "PASSED: Environment Setup"
+}
+
+# Test 2: startGPGAgent
+test_start_agent() {
+  echo "--- Test 2: startGPGAgent ---"
+
+  if ! command -v gpgconf >/dev/null || ! command -v gpg-connect-agent >/dev/null; then
+     echo "SKIPPED: gpg tools not found in PATH"
+     return 0
+  fi
+
+  if ! startGPGAgent; then
+    echo "FAILED: startGPGAgent failed"
+    return 1
+  fi
+  
+  # Check if agent is actually running and responding for this GNUPGHOME
+  GCA_OUT=$(gpg-connect-agent /bye 2>&1)
+  if [ $? -ne 0 ]; then
+    echo "FAILED: gpg-agent is not responding. Error: $GCA_OUT"
+    return 1
+  fi
+  
+  # Check if GPG_TTY is exported
+  if [ -z "$GPG_TTY" ]; then
+    echo "FAILED: GPG_TTY not exported"
+    return 1
+  fi
+  echo "PASSED: startGPGAgent"
+}
+
+# Test 3: gpgCleanup
+test_cleanup() {
+  echo "--- Test 3: gpgCleanup ---"
+  SIGNATURE_FILE="$zopen_tmp_dir/sig.asc"
+  PUBLIC_KEY_FILE="$zopen_tmp_dir/pub.asc"
+  touch "$SIGNATURE_FILE" "$PUBLIC_KEY_FILE"
+  
+  gpgCleanup
+  
+  if [ -f "$SIGNATURE_FILE" ] || [ -f "$PUBLIC_KEY_FILE" ] || [ -d "$TMP_GPG_DIR" ]; then
+    echo "FAILED: Cleanup did not remove files/directories"
+    return 1
+  fi
+  
+  if [ -n "$GNUPGHOME" ]; then
+    echo "FAILED: GNUPGHOME not unset"
+    return 1
+  fi
+  
+  echo "PASSED: gpgCleanup"
+}
+
+# Run tests
+test_env_setup || exit 1
+test_start_agent || exit 1
+test_cleanup || exit 1
+
+echo "All GPG Agent tests passed successfully!"
+rm -rf "$TEST_DIR"
+exit 0
