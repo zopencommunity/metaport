@@ -67,6 +67,12 @@ if ! (zopen list --installed >/dev/null 2>&1); then fail "No version of zopen li
 outfile="${zopenenv}/out.txt"
 errfile="${zopenenv}/err.txt"
 
+# Ensure the baseline runs really do resolve native tools first: if this
+# test is launched from an environment already configured with
+# --override-zos-tools, altbin would already be ahead of /bin and the
+# "native" and "override" runs would compare identical PATH orderings
+export PATH="/bin:${PATH}"
+
 echo "Running zopen list --installed (native tools first on PATH)"
 COLUMNS=100 zopen list --installed > "${outfile}" 2> "${errfile}" || fail "zopen list --installed failed: $(cat "${errfile}")"
 [ -s "${outfile}" ] || fail "zopen list --installed produced no output"
@@ -144,12 +150,14 @@ if [ -n "${scriptcmd}" ]; then
   ptyoverride="${zopenenv}/pty_override.txt"
   : > "${ptynative}"; : > "${ptyoverride}"
 
-  # Colors may be legitimately suppressed by the environment (eg. NO_COLOR
-  # or _BPX_TERMPATH=OMVS on CI agents); clear the suppressors so the color
-  # code path is actually exercised on the pseudo-terminal
-  unset NO_COLOR _BPX_TERMPATH 2>/dev/null || true
+  # Colors may be legitimately suppressed by the environment (eg. NO_COLOR,
+  # FORCE_COLOR=0 or _BPX_TERMPATH=OMVS on CI agents); clear the suppressors
+  # so the color code path is actually exercised on the pseudo-terminal
+  unset NO_COLOR FORCE_COLOR _BPX_TERMPATH 2>/dev/null || true
 
+  override_run=0
   if [ -n "${realaltbin}" ] && [ -x "${realaltbin}/printf" ]; then
+    override_run=1
     PATH="${realaltbin}:${PATH}" COLUMNS=100 "${scriptcmd}" -qec "zopen list --installed" "${ptyoverride}" >/dev/null 2>&1 \
       || fail "zopen list --installed failed on pseudo-terminal with altbin first on PATH"
   fi
@@ -162,7 +170,25 @@ if [ -n "${scriptcmd}" ]; then
   ptyheader_native=$(awk '/Package/{print; exit}' "${ptynative}" | tr -d '\r')
   ptyheader_override=$(awk '/Package/{print; exit}' "${ptyoverride}" | tr -d '\r')
 
+  # Detect whether the header carries a real ANSI underline sequence by
+  # matching the actual ESC byte, not just the printable '[4m' suffix (a
+  # bare '[4m' without an ESC byte is not an escape sequence). Depending on
+  # which shell/tools process the transcript, the bytes may be ASCII
+  # (ESC[4m = 1b 5b 34 6d) or EBCDIC (ESC[4m = 27 ad f0 94) - accept both.
+  # Matching on hex keeps the check independent of how the local shell
+  # encodes escape characters
+  header_has_ansi()
+  {
+    # note: native z/OS od prints uppercase hex while GNU od prints lowercase
+    printf '%s' "$1" | od -An -tx1 | tr -d ' \n' | tr 'A-Z' 'a-z' \
+      | grep -q -e '1b5b346d' -e '27adf094'
+  }
+
   for ptyheader in "${ptyheader_native}" "${ptyheader_override}"; do
+    # skip validation of the override transcript when that run was disabled
+    if [ "${ptyheader}" = "${ptyheader_override}" ] && [ "${override_run}" -eq 0 ]; then
+      continue
+    fi
     [ -n "${ptyheader}" ] || fail "No header row found in pseudo-terminal output"
     echo "${ptyheader}" | grep -q "Package.*Version.*File.*Releaseline" \
       || fail "Header fields garbled or missing on pseudo-terminal: ${ptyheader}"
@@ -176,9 +202,9 @@ if [ -n "${scriptcmd}" ]; then
   # present in both runs; if the environment cannot enable colors at all,
   # skip this assertion rather than failing (eg. CI agents that suppress
   # colors regardless of tty)
-  ansi_native=0; echo "${ptyheader_native}" | grep -q '\[4m' && ansi_native=1
-  ansi_override=0; echo "${ptyheader_override}" | grep -q '\[4m' && ansi_override=1
-  if [ -z "${ptyheader_override}" ]; then
+  ansi_native=0; header_has_ansi "${ptyheader_native}" && ansi_native=1
+  ansi_override=0; header_has_ansi "${ptyheader_override}" && ansi_override=1
+  if [ "${override_run}" -eq 0 ]; then
     echo "NOTE: no altbin override run - skipping ANSI comparison"
   elif [ "${ansi_native}" != "${ansi_override}" ]; then
     fail "ANSI colors differ between native (${ansi_native}) and altbin-first (${ansi_override}) PATH orderings"
