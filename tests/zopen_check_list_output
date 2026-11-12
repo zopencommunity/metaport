@@ -174,15 +174,21 @@ if [ -n "${scriptcmd}" ]; then
   # matching the actual ESC byte, not just the printable '[4m' suffix (a
   # bare '[4m' without an ESC byte is not an escape sequence). Depending on
   # which shell/tools process the transcript, the bytes may be ASCII
-  # (ESC[4m = 1b 5b 34 6d) or EBCDIC (ESC[4m = 27 ad f0 94) - accept both.
+  # (ESC[4m = 1b 5b 34 6d) or EBCDIC (ESC[4m = 27 ad f4 94) - accept both.
   # Matching on hex keeps the check independent of how the local shell
   # encodes escape characters
   header_has_ansi()
   {
     # note: native z/OS od prints uppercase hex while GNU od prints lowercase
     printf '%s' "$1" | od -An -tx1 | tr -d ' \n' | tr 'A-Z' 'a-z' \
-      | grep -q -e '1b5b346d' -e '27adf094'
+      | grep -q -e '1b5b346d' -e '27adf494'
   }
+
+  # Validate the native header unconditionally (before the override skip
+  # below): if the override run was disabled and the native header were
+  # also empty, the loop's skip condition would otherwise match both
+  # iterations (empty string equality) and bypass validation entirely
+  [ -n "${ptyheader_native}" ] || fail "No header row found in native pseudo-terminal output"
 
   for ptyheader in "${ptyheader_native}" "${ptyheader_override}"; do
     # skip validation of the override transcript when that run was disabled
