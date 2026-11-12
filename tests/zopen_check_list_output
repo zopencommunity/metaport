@@ -1,0 +1,240 @@
+#!/bin/sh
+
+#
+# Check 'zopen list --installed' output:
+# - no garbled ANSI escape sequences in the header (the "'[0m"/"'[4m" symptom
+#   seen when zopen-config is sourced with --override-zos-tools)
+# - identical output regardless of PATH ordering (altbin first vs native
+#   /bin tools first) - ie. layout must not depend on which stty/printf
+#   resolves first
+# - metadata values (.version/.releaseinfo/.releaseline) read correctly
+# - robust width handling for narrow screens
+#
+set -e # hard failure if any commands fail
+WORKDIR="$1"
+
+fail(){ echo "Test failure: $*"; exit 8; }
+
+[ -d "${WORKDIR}" ] || fail "Working directory '${WORKDIR}' does not exist"
+
+zopenenv="${WORKDIR}/zopen-env-$(basename "$0")"
+[ -e "${zopenenv}" ] && echo "Clearing existing work env" && rm -rf "${zopenenv}"
+
+# Remember where the real (installed) zopen rootfs is so we can locate its
+# altbin directory (GNU coreutils) to simulate --override-zos-tools PATH
+# ordering, before pointing the zopen environment at our dummy rootfs
+realrootfs="${ZOPEN_ROOTFS:-}"
+realaltbin=""
+[ -n "${realrootfs}" ] && [ -d "${realrootfs}/usr/local/altbin" ] && realaltbin="${realrootfs}/usr/local/altbin"
+
+cleanup(){
+  rm -rf "${zopenenv}"
+}
+trap cleanup EXIT
+
+mkdir -p "${zopenenv}"
+
+# Point the zopen environment at a dummy rootfs with fake packages
+export ZOPEN_ROOTFS="${zopenenv}"
+export ZOPEN_PKGINSTALL="${ZOPEN_ROOTFS}/usr/local/zopen"
+
+create_pkg()
+{
+  cname="$1"; cversion="$2"; cfile="$3"; cline="$4"
+  cdir="${ZOPEN_PKGINSTALL}/${cname}/${cfile}"
+  mkdir -p "${cdir}"
+  echo "${cversion}" > "${cdir}/.version"
+  echo "${cfile}" > "${cdir}/.releaseinfo"
+  echo "${cline}" > "${cdir}/.releaseline"
+  : > "${cdir}/.active"
+  ln -s "${cdir}" "${ZOPEN_PKGINSTALL}/${cname}/${cname}"
+}
+
+echo "Creating dummy packages"
+create_pkg zotsample 1.2.3 zotsample-1.2.3.20240101_010101.zos STABLE
+create_pkg zotsecond 4.5.6 zotsecond-4.5.6.dev n/a
+# a package with no .releaseline at all - must default to 'n/a'
+cdir="${ZOPEN_PKGINSTALL}/zotthird/zotthird-7.8.9.zos"
+mkdir -p "${cdir}"
+echo "7.8.9" > "${cdir}/.version"
+echo "zotthird-7.8.9.zos" > "${cdir}/.releaseinfo"
+: > "${cdir}/.active"
+ln -s "${cdir}" "${ZOPEN_PKGINSTALL}/zotthird/zotthird"
+
+echo "Ensuring zopen list is available"
+if ! (zopen list --installed >/dev/null 2>&1); then fail "No version of zopen list found"; fi
+
+outfile="${zopenenv}/out.txt"
+errfile="${zopenenv}/err.txt"
+
+# Ensure the baseline runs really do resolve native tools first: if this
+# test is launched from an environment already configured with
+# --override-zos-tools, altbin would already be ahead of /bin and the
+# "native" and "override" runs would compare identical PATH orderings
+export PATH="/bin:${PATH}"
+
+echo "Running zopen list --installed (native tools first on PATH)"
+COLUMNS=100 zopen list --installed > "${outfile}" 2> "${errfile}" || fail "zopen list --installed failed: $(cat "${errfile}")"
+[ -s "${outfile}" ] || fail "zopen list --installed produced no output"
+
+echo "Checking header fields are present"
+headerline=$(head -1 "${outfile}")
+echo "${headerline}" | grep -q "Package" || fail "Header missing 'Package' column: ${headerline}"
+echo "${headerline}" | grep -q "Version" || fail "Header missing 'Version' column: ${headerline}"
+echo "${headerline}" | grep -q "File" || fail "Header missing 'File' column: ${headerline}"
+echo "${headerline}" | grep -q "Releaseline" || fail "Header missing 'Releaseline' column: ${headerline}"
+
+echo "Checking for garbled ANSI escape sequences (override-zos-tools symptom)"
+# The reported bug rendered the escape byte as a literal apostrophe or as
+# the uninterpreted octal text; neither may appear in the output
+if grep -q -e "'\[0m" -e "'\[4m" -e "'\[3[0-9]m" "${outfile}"; then
+  fail "Garbled escape sequence (apostrophe + CSI) found in output"
+fi
+if grep -q -e '\\047' -e '\\033' "${outfile}"; then
+  fail "Literal escape text (\\047 or \\033) found in output"
+fi
+
+echo "Checking package metadata is read correctly"
+grep -q "^zotsample " "${outfile}" || fail "Package 'zotsample' missing from output"
+awk '$1=="zotsample" {
+  if ($2 != "1.2.3") { print "bad version: "$2; exit 1 }
+  if ($3 != "zotsample-1.2.3.20240101_010101.zos") { print "bad file: "$3; exit 1 }
+  if ($4 != "STABLE") { print "bad releaseline: "$4; exit 1 }
+}' "${outfile}" || fail "zotsample row incorrect"
+grep -q "^zotthird " "${outfile}" || fail "Package 'zotthird' missing from output"
+awk '$1=="zotthird" {
+  if ($4 != "n/a") { print "bad releaseline: "$4; exit 1 }
+}' "${outfile}" || fail "zotthird releaseline not defaulted to n/a"
+# every package we created must be listed
+for pkg in zotsample zotsecond zotthird; do
+  grep -q "^${pkg} " "${outfile}" || fail "Package '${pkg}' missing from output"
+done
+
+echo "Checking narrow screen width is handled without failure"
+COLUMNS=40 zopen list --installed > "${zopenenv}/out40.txt" 2> "${errfile}" || fail "zopen list --installed failed with COLUMNS=40"
+[ -s "${zopenenv}/out40.txt" ] || fail "zopen list --installed produced no output with COLUMNS=40"
+
+# Re-run with the GNU coreutils altbin directory first on PATH to simulate
+# the PATH ordering that --override-zos-tools produces; output must be
+# byte-identical to the native-tools run (same width source, same escapes)
+if [ -n "${realaltbin}" ] && [ -x "${realaltbin}/printf" ]; then
+  echo "Re-running with altbin (${realaltbin}) first on PATH (override simulation)"
+  PATH="${realaltbin}:${PATH}" COLUMNS=100 zopen list --installed > "${zopenenv}/out_override.txt" 2> "${errfile}" \
+    || fail "zopen list --installed failed with altbin first on PATH: $(cat "${errfile}")"
+  if ! cmp -s "${outfile}" "${zopenenv}/out_override.txt"; then
+    echo "--- native run ---"; cat "${outfile}"
+    echo "--- override run ---"; cat "${zopenenv}/out_override.txt"
+    fail "Output differs between native-tools and altbin-first PATH ordering"
+  fi
+else
+  echo "Skipping altbin PATH-ordering check (no altbin found)"
+fi
+
+# The redirected (non-tty) runs above cannot exhibit the color/escape bug
+# because colors are suppressed when stdout is not a terminal. Run the same
+# command on a pseudo-terminal to exercise the color path: the header must
+# carry real ANSI escape sequences (not literal apostrophes or octal text)
+# and the output must be identical between native and altbin-first PATH
+# orderings (the reported --override-zos-tools discrepancies)
+scriptcmd=""
+if command -v script >/dev/null 2>&1 && script -qec true /dev/null >/dev/null 2>&1; then
+  scriptcmd="script"
+elif [ -n "${realaltbin}" ] && [ -x "${realaltbin}/script" ] \
+     && "${realaltbin}/script" -qec true /dev/null >/dev/null 2>&1; then
+  scriptcmd="${realaltbin}/script"
+fi
+
+if [ -n "${scriptcmd}" ]; then
+  echo "Running on a pseudo-terminal via ${scriptcmd}"
+  ptynative="${zopenenv}/pty_native.txt"
+  ptyoverride="${zopenenv}/pty_override.txt"
+  : > "${ptynative}"; : > "${ptyoverride}"
+
+  # Colors may be legitimately suppressed by the environment (eg. NO_COLOR,
+  # FORCE_COLOR=0 or _BPX_TERMPATH=OMVS on CI agents); clear the suppressors
+  # so the color code path is actually exercised on the pseudo-terminal
+  unset NO_COLOR FORCE_COLOR _BPX_TERMPATH 2>/dev/null || true
+
+  override_run=0
+  if [ -n "${realaltbin}" ] && [ -x "${realaltbin}/printf" ]; then
+    override_run=1
+    PATH="${realaltbin}:${PATH}" COLUMNS=100 "${scriptcmd}" -qec "zopen list --installed" "${ptyoverride}" >/dev/null 2>&1 \
+      || fail "zopen list --installed failed on pseudo-terminal with altbin first on PATH"
+  fi
+  COLUMNS=100 "${scriptcmd}" -qec "zopen list --installed" "${ptynative}" >/dev/null 2>&1 \
+    || fail "zopen list --installed failed on pseudo-terminal"
+
+  # find the header line (the first line containing 'Package') and check
+  # for the reported bug: the escape byte rendered as a literal apostrophe
+  # ('[0m / '[4m) when GNU tools resolve first on PATH
+  ptyheader_native=$(awk '/Package/{print; exit}' "${ptynative}" | tr -d '\r')
+  ptyheader_override=$(awk '/Package/{print; exit}' "${ptyoverride}" | tr -d '\r')
+
+  # Detect whether the header carries a real ANSI underline sequence by
+  # matching the actual ESC byte, not just the printable '[4m' suffix (a
+  # bare '[4m' without an ESC byte is not an escape sequence). Depending on
+  # which shell/tools process the transcript, the bytes may be ASCII
+  # (ESC[4m = 1b 5b 34 6d) or EBCDIC (ESC[4m = 27 ad f4 94) - accept both.
+  # Matching on hex keeps the check independent of how the local shell
+  # encodes escape characters
+  header_has_ansi()
+  {
+    # note: native z/OS od prints uppercase hex while GNU od prints lowercase
+    printf '%s' "$1" | od -An -tx1 | tr -d ' \n' | tr 'A-Z' 'a-z' \
+      | grep -q -e '1b5b346d' -e '27adf494'
+  }
+
+  # Validate the native header unconditionally (before the override skip
+  # below): if the override run was disabled and the native header were
+  # also empty, the loop's skip condition would otherwise match both
+  # iterations (empty string equality) and bypass validation entirely
+  [ -n "${ptyheader_native}" ] || fail "No header row found in native pseudo-terminal output"
+
+  for ptyheader in "${ptyheader_native}" "${ptyheader_override}"; do
+    # skip validation of the override transcript when that run was disabled
+    if [ "${ptyheader}" = "${ptyheader_override}" ] && [ "${override_run}" -eq 0 ]; then
+      continue
+    fi
+    [ -n "${ptyheader}" ] || fail "No header row found in pseudo-terminal output"
+    echo "${ptyheader}" | grep -q "Package.*Version.*File.*Releaseline" \
+      || fail "Header fields garbled or missing on pseudo-terminal: ${ptyheader}"
+    echo "${ptyheader}" | grep -q -e "'\[0m" -e "'\[4m" \
+      && fail "Garbled escape sequence (apostrophe + CSI) in pseudo-terminal header: ${ptyheader}"
+    echo "${ptyheader}" | grep -q -e '\\047' -e '\\033' \
+      && fail "Literal escape text (\\047 or \\033) in pseudo-terminal header: ${ptyheader}"
+  done
+
+  # If colors are enabled for a tty, the underline (ANSI) sequence must be
+  # present in both runs; if the environment cannot enable colors at all,
+  # skip this assertion rather than failing (eg. CI agents that suppress
+  # colors regardless of tty)
+  ansi_native=0; header_has_ansi "${ptyheader_native}" && ansi_native=1
+  ansi_override=0; header_has_ansi "${ptyheader_override}" && ansi_override=1
+  if [ "${override_run}" -eq 0 ]; then
+    echo "NOTE: no altbin override run - skipping ANSI comparison"
+  elif [ "${ansi_native}" != "${ansi_override}" ]; then
+    fail "ANSI colors differ between native (${ansi_native}) and altbin-first (${ansi_override}) PATH orderings"
+  fi
+  if [ "${ansi_native}" -eq 1 ]; then
+    echo "ANSI colors detected on pseudo-terminal - verifying escape sequences"
+  else
+    echo "NOTE: colors suppressed in this environment - skipping ANSI presence check (garble checks still enforced)"
+  fi
+
+  # The layout must be identical between the two PATH orderings; the 'script'
+  # utility adds a first ('Script started on <timestamp>') and last
+  # ('Script done...') line which differ between runs - compare the body only
+  sed -e '1d' -e '$d' -e 's/\r$//' "${ptynative}" > "${zopenenv}/pty_native_body.txt"
+  sed -e '1d' -e '$d' -e 's/\r$//' "${ptyoverride}" > "${zopenenv}/pty_override_body.txt"
+  if [ -s "${zopenenv}/pty_override_body.txt" ] \
+     && ! cmp -s "${zopenenv}/pty_native_body.txt" "${zopenenv}/pty_override_body.txt"; then
+    echo "--- native pty run ---"; cat "${zopenenv}/pty_native_body.txt"
+    echo "--- override pty run ---"; cat "${zopenenv}/pty_override_body.txt"
+    fail "Pseudo-terminal output differs between native-tools and altbin-first PATH ordering"
+  fi
+else
+  echo "Skipping pseudo-terminal checks (no suitable 'script' command found)"
+fi
+
+echo "All zopen list output checks passed"
+exit 0
